@@ -230,6 +230,7 @@ def pretrain(neox_args):
 
     """
     # setup logging and timers
+    #print("Ayyy 6")
     init_wandb(neox_args=neox_args)
     timers = Timers(
         use_wandb=neox_args.use_wandb,
@@ -238,14 +239,17 @@ def pretrain(neox_args):
     )
 
     # Initialize and get arguments, timers, and Tensorboard writer.
+    #print("Ayyy 7")
     initialize_megatron(neox_args=neox_args)
 
+    #print("Ayyy 8")
     # Create data loaders
     timers("train/valid/test data loaders").start()
     data_loaders = build_train_valid_test_data_loaders(neox_args=neox_args)
     update_iterations(neox_args=neox_args, data_loaders=data_loaders)
     timers("train/valid/test data loaders").stop()
 
+    #print("Ayyy 9")
     # Model, optimizer, and learning rate.
     timers("model and optimizer").start()
     model, optimizer, lr_scheduler, reference_model = setup_model_and_optimizer(
@@ -253,6 +257,7 @@ def pretrain(neox_args):
     )
     timers("model and optimizer").stop()
 
+    #print("Ayyy 10")
     # Make and configure iterators
     timers("train/valid/test data iterators").start()
     (
@@ -262,9 +267,11 @@ def pretrain(neox_args):
     ) = shift_and_wrap_data_loaders(neox_args=neox_args, data_loaders=data_loaders)
     timers("train/valid/test data iterators").stop()
 
+    #print("Ayyy 11")
     if neox_args.use_mup and neox_args.coord_check:
         mup_coord_check(neox_args, timers, lr_scheduler, train_data_iterator)
 
+    #print("Ayyy 12")
     # Print setup timing.
     print_rank_0("done with setups ...")
     timers.log(
@@ -291,7 +298,7 @@ def pretrain(neox_args):
             optimizer=optimizer,
             lr_scheduler=lr_scheduler,
         )
-
+    #print("Ayyy 13")
     if neox_args.do_train and neox_args.train_iters > 0:
         iteration = train(
             neox_args=neox_args,
@@ -304,6 +311,7 @@ def pretrain(neox_args):
             valid_data_iterator=valid_data_iterator,
         )
 
+    #print("Ayyy 14")
     if neox_args.do_valid:
         prefix = "the end of training for val data"
         evaluate_and_print_results(
@@ -318,6 +326,7 @@ def pretrain(neox_args):
             reference_model=reference_model,
         )
 
+    #print("Ayyy 15")
     if neox_args.save and iteration != 0:
         save_checkpoint(
             neox_args=neox_args,
@@ -327,6 +336,7 @@ def pretrain(neox_args):
             lr_scheduler=lr_scheduler,
         )
 
+    #print("Ayyy 16")
     if neox_args.do_test:
         # Run on test data.
         prefix = "the end of training for test data"
@@ -1136,6 +1146,7 @@ def get_learning_rate_scheduler(optimizer, neox_args):
 
 def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
     """Setup memory profiler"""
+    #print("Ayylmao 1")
     if neox_args.memory_profiling:
         torch.cuda.memory._record_memory_history(
             True,
@@ -1145,18 +1156,24 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
         )
 
     """Setup model and optimizer."""
+    #print("Ayylmao 2")
     needs_reference_model = (
         (neox_args.train_impl == "dpo")
         and (neox_args.precompute_model_name is None)
         and (not neox_args.dpo_reference_free)
     ) or ((neox_args.train_impl == "kto") and (neox_args.precompute_model_name is None))
+    #print("Ayylmao 3")
     model = get_model(neox_args=neox_args, use_cache=use_cache)
+    #print("Ayylmao 4")
     if needs_reference_model:
         reference_model = get_model(neox_args=neox_args, use_cache=use_cache)
     else:
         reference_model = None
+    #print("Ayylmao 5")
     optimizer, param_groups = get_optimizer(model=model, neox_args=neox_args)
+    #print("Ayylmao 6")
     lr_scheduler = get_learning_rate_scheduler(optimizer=optimizer, neox_args=neox_args)
+    #print("Ayylmao 7")
     if neox_args.deepspeed and needs_reference_model:
         # Need an optimizer & lr_scheduler so make a very small one to keep deepspeed happy...
         ref_optimizer, ref_param_groups = get_optimizer(
@@ -1167,11 +1184,31 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
         )
     else:
         ref_optimizer, ref_param_groups, ref_lr_scheduler = None, None, None
+    #print("Ayylmao 7")
     if neox_args.deepspeed:
         print_rank_0("DeepSpeed is enabled.")
         _model_params = param_groups if optimizer is None else None
         _lr_scheduler = lr_scheduler
 
+        #print("Ayylmao 8")
+        #print(model)
+        #print(optimizer)
+        #print(neox_args)
+        #print(_lr_scheduler)
+        #print(_model_params)
+        #import sys
+        #def trace_lines(frame, event, arg):
+        #  if event == "line":
+        #    co = frame.f_code
+        #    lineno = frame.f_lineno
+        #    filename = co.co_filename
+        #    name = co.co_name
+        #    #line = open(filename).readlines()[lineno-1].strip()
+        #    print(f"Executing {name} at {filename}:{lineno}:")
+        #    sys.stdout.flush()  # Make sure it prints immediately
+        #  return trace_lines
+
+        #sys.settrace(trace_lines)
         model, optimizer, _, lr_scheduler = deepspeed.initialize(
             model=model,
             optimizer=optimizer,
@@ -1183,6 +1220,7 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
             # config_params=neox_args.deepspeed_config,
             mpu=mpu if not neox_args.is_pipe_parallel else None,
         )
+        #print("Ayylmao 9")
         if needs_reference_model:
             reference_model, _, _, _ = deepspeed.initialize(
                 model=reference_model,
@@ -1193,12 +1231,16 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
                 model_parameters=ref_param_groups,
                 mpu=mpu if not neox_args.is_pipe_parallel else None,
             )
+        #print("Ayylmao 10")
         mark_norms_for_sequence_parallel_grad_sync(model, neox_args)
+        #print("Ayylmao 11")
         if neox_args.moe_num_experts > 1 and neox_args.moe_type == "megablocks":
             # We need to additionally set this flag to ensure DS parallelism properly handles this foreign MoE.
             model.has_moe_layers = True
+        #print("Ayylmao 12")
         model.total_params = get_total_params(model.module)
         print_rank_0(f' > total params: {"{:,}".format(model.total_params)}')
+        #print("Ayylmao 13")
 
         if neox_args.is_pipe_parallel:
             model.set_has_attention_mask(True)
@@ -1217,11 +1259,14 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
             model.module.set_batch_fn(
                 partial(get_batch_sequential, neox_args=neox_args)
             )
+        #print("Ayylmao 14")
 
     else:
         raise ValueError("Must be using deepspeed to run neox")
 
+    #print("Ayylmao 15")
     if neox_args.load is not None:
+        #print("bbbbb 1")
         neox_args.iteration = load_checkpoint(
             neox_args=neox_args,
             model=model,
@@ -1229,6 +1274,7 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
             lr_scheduler=lr_scheduler,
             iteration=iteration,
         )
+        #print("bbbbb 2")
         if needs_reference_model:
             _ = load_checkpoint(
                 neox_args=neox_args,
@@ -1238,17 +1284,20 @@ def setup_model_and_optimizer(neox_args, use_cache=False, iteration=None):
                 iteration=iteration,
             )
             reference_model.eval()
+        #print("bbbbb 3")
         print_rank_0(
             f"Loading checkpoint and starting from iteration {neox_args.iteration}"
         )
     else:
         neox_args.iteration = 0
+    #print("Ayylmao 16")
 
     # need this for correct lr scheduling resume from ckpt
     # but it will not exist if this is being called for inference
     if lr_scheduler is not None:
         lr_scheduler.optimizer = model.optimizer
 
+    #print("Ayylmao 17")
     return model, optimizer, lr_scheduler, reference_model
 
 
@@ -1284,6 +1333,7 @@ def train_step(
 
     # Pipeline parallelism schedules forward/backward/step
     if neox_args.is_pipe_parallel:
+        #print("PIipeline parallel???")
         reduced_loss = train_step_pipe(
             neox_args=neox_args, timers=timers, model=model, data_iterator=data_iterator
         )
@@ -1296,11 +1346,13 @@ def train_step(
         ):
             save_snapshot(neox_args)
     else:
+        #print("TrainStep 1")
         losses = []
         metric_dicts = defaultdict(list)
         for _ in range(neox_args.gradient_accumulation_steps):
             # Forward model for one step.
             timers("forward").start()
+            #print("TrainStep 2")
             loss, metric_dict = forward_step(
                 neox_args=neox_args,
                 timers=timers,
@@ -1309,6 +1361,7 @@ def train_step(
                 is_train=True,
                 reference_model=reference_model,
             )
+            #print("TrainStep 3")
             timers("forward").stop()
             losses.append(loss)
             for key in metric_dict.keys():
@@ -1320,6 +1373,7 @@ def train_step(
                 and neox_args.iteration <= neox_args.profile_step_stop
             ):
                 torch.cuda.nvtx.range_push(f"Backward pass")
+            #print("TrainStep 4")
             timers("backward").start()
             backward_step(
                 neox_args=neox_args,
@@ -1329,12 +1383,14 @@ def train_step(
                 loss=loss,
             )
             timers("backward").stop()
+            #print("TrainStep 5")
             if (
                 neox_args.profile
                 and neox_args.iteration >= neox_args.profile_step_start
                 and neox_args.iteration <= neox_args.profile_step_stop
             ):
                 torch.cuda.nvtx.range_pop()
+            #print("TrainStep 6")
             # Update parameters.
             if (
                 neox_args.profile
@@ -1343,11 +1399,13 @@ def train_step(
             ):
                 torch.cuda.nvtx.range_push(f"Optimizer step")
 
+            #print("TrainStep 7")
             timers("optimizer").start()
             if neox_args.deepspeed:
                 model.step()
             else:
                 raise ValueError("Must be using deepspeed to run neox")
+            #print("TrainStep 8")
             timers("optimizer").stop()
             if (
                 neox_args.profile
@@ -1355,6 +1413,7 @@ def train_step(
                 and neox_args.iteration <= neox_args.profile_step_stop
             ):
                 torch.cuda.nvtx.range_pop()
+            #print("TrainStep 9")
             if (
                 neox_args.profile
                 and neox_args.iteration >= neox_args.profile_step_start
@@ -1467,11 +1526,15 @@ def train(
             with_stack=True,
         )
         prof.start()
+    #print("Training 1")
     while iteration < neox_args.train_iters:
+        #print("Training 1.5")
         if neox_args.profile:
             prof.step()
+        #print("Training 1.6")
         if neox_args.profile and iteration == neox_args.profile_step_start:
             torch.cuda.cudart().cudaProfilerStart()
+        #print("Training 1.7")
         loss_dict, skipped_iter = train_step(
             neox_args=neox_args,
             timers=timers,
@@ -1481,16 +1544,20 @@ def train(
             lr_scheduler=lr_scheduler,
             reference_model=reference_model,
         )
+        #print("Training 1.8")
         if neox_args.profile and iteration == neox_args.profile_step_stop:
             torch.cuda.cudart().cudaProfilerStop()
             prof.stop()
         iteration += 1
         neox_args.iteration = iteration
+        #print("Training 1.9")
         if neox_args.precision == "fp16":
             overflow_monitor.check(skipped_iter)  # check for repeated overflow
+        #print("Training 2")
         if neox_args.log_gradient_noise_scale:  # log noise scale if applicable
             noise_scale_logger.update()
 
+        #print("Training 3")
         # get learning rate (if present) - if doing soft prompt tuning + pipe parallel, you
         # may have no tunable parameters on a specific rank
         if optimizer.param_groups:
@@ -1498,6 +1565,7 @@ def train(
         else:
             lr = 0
 
+        #print("Training 4")
         # Logging.
         report_memory_flag = training_log(
             neox_args=neox_args,
@@ -1514,6 +1582,7 @@ def train(
             noise_scale_logger=noise_scale_logger,
         )
 
+        #print("Training 5")
         # Checkpointing
         if neox_args.save and is_save_iter(neox_args, iteration):
             save_checkpoint(
@@ -1524,6 +1593,7 @@ def train(
                 lr_scheduler=lr_scheduler,
             )
         # Evaluation
+        #print("Training 6")
         if (
             neox_args.eval_interval
             and iteration % neox_args.eval_interval == 0
@@ -1542,6 +1612,7 @@ def train(
                 reference_model=reference_model,
             )
 
+        #print("Training 7")
         if neox_args.exit_interval and iteration % neox_args.exit_interval == 0:
             torch.distributed.barrier()
             time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1552,6 +1623,7 @@ def train(
                 )
             )
             sys.exit()
+        #print("Training 8")
 
     return iteration
 
@@ -1599,13 +1671,23 @@ def evaluate(
                 else neox_args.gradient_accumulation_steps
             ):
                 # Forward evaluation
-                loss, metric_dict = forward_step_fn(
+                def mock_metrics(res):
+                    """Someone broke the forward_step_fn.
+                    This is a quick and dirty fix.
+                    """
+                    if isinstance(res, tuple):
+                        return res
+                    else:
+                        return res, {}
+
+                res = forward_step_fn(
                     model=model,
                     data_iterator=data_iterator,
                     neox_args=neox_args,
                     timers=timers,
                     reference_model=reference_model,
                 )
+                loss, metric_dict = mock_metrics(res)
                 losses.append(loss)
                 for key in metric_dict.keys():
                     metric_dicts[key].append(metric_dict[key])

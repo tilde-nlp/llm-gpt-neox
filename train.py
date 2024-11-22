@@ -24,10 +24,15 @@ def main(input_args=None, overwrite_values=None):
     neox_args = NeoXArgs.consume_neox_args(
         input_args=input_args, overwrite_values=overwrite_values
     )
+    #print('Ayyy 1')
     neox_args.configure_distributed_args()
+    #print('Ayyy 2')
     neox_args.build_tokenizer()  # tokenizer needs to be build in training in order to set the padding vocab
+    #print('Ayyy 3')
     neox_args.initialize_tensorboard_writer()  # is initialized if tensorboard directory is defined
+    #print('Ayyy 4')
     neox_args.initialize_comet()  # is initialized if comet directory is defined
+    #print('Ayyy 5')
     pretrain(neox_args=neox_args)
 
 
