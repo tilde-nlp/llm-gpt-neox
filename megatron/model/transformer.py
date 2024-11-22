@@ -699,6 +699,7 @@ class ParallelSelfAttention(nn.Module):
                     **extra_kwargs,
                 )
                 output = output.reshape(q_shape)
+                output = output.transpose(1, 2)
             else:
                 output = self.flash_qkv_fn(
                     query_layer,
