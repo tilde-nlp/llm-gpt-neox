@@ -699,7 +699,6 @@ class ParallelSelfAttention(nn.Module):
                     **extra_kwargs,
                 )
                 output = output.reshape(q_shape)
-                output = output.transpose(1, 2)
             else:
                 output = self.flash_qkv_fn(
                     query_layer,
@@ -713,7 +712,7 @@ class ParallelSelfAttention(nn.Module):
 
             matmul_result = output
             # [b, sq, np, hn] -> [b, np, sq, hn]
-            matmul_result = matmul_result.transpose(1, 2)
+            matmul_result = matmul_result.permute(0, 2, 1, 3)
 
         else:
             # we still use Triton if using AliBi with flash-attn<2.4.0.post1.
@@ -1249,9 +1248,9 @@ class ParallelTransformerLayer(nn.Module):
                     raise KeyError(self.moe_type)
 
             with torch.enable_grad() if not self.eval else nullcontext():
+                #This was changed from the original repo, because someone did a commit that messed this line up.
                 if (
-                    mlp_bias == None,
-                    self.num_experts > 1 and self.moe_type == "deepspeed",
+                    self.num_experts > 1 and self.moe_type == "deepspeed"
                 ):
                     # No dropout either
                     assert mlp_bias is None
