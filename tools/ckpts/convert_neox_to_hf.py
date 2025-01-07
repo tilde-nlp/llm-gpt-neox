@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Doing magic so prints flush immediately.
+import builtins
+original_print = builtins.print
+def custom_print(*args, **kwargs):
+    if 'flush' not in kwargs:  # Only set flush if it's not already provided
+        kwargs['flush'] = True
+    original_print(*args, **kwargs)
+builtins.print = custom_print
+
 import os
 import sys
 
@@ -301,6 +310,11 @@ def create_config(neox_config, architecture="neox", is_rm=False, pad_token_id=-1
                 "rope_theta": get_key(neox_config, "rotary-emb-base", 10000.0),
             }
         )
+        #This next if is added by ingus.
+        #Calculate the intermediate size as it would be calculated in the training script.
+        if "intermediate_size" in neox_config:
+            print("Doing degeneracy to intermediate size")
+            args.update({"intermediate_size": int(get_key(neox_config, "intermediate_size") * 2 / 3) // 2})
 
         if architecture == "mistral":
             # mistral-specific options
@@ -444,6 +458,9 @@ def reshard_and_split_qkv(
 
 def get_mlp_naming_convention(loaded_tp_ranks, layer_idx, sequential):
     """Determine whether the checkpoint uses the legacy or new MLP naming convention."""
+    #I don't remember why I added this if statement.
+    if "module" not in loaded_tp_ranks[0]:
+      loaded_tp_ranks = [{"module": m} for m in loaded_tp_ranks]
     print(list(loaded_tp_ranks[0]["module"].keys()))
     if any(
         [
@@ -487,8 +504,16 @@ def convert(
         loaded_config, architecture=architecture, is_rm=is_rm, pad_token_id=pad_token_id
     )
 
+    from accelerate import init_empty_weights
+
     if not is_rm:
-        hf_model = AutoModelForCausalLM.from_config(hf_config)
+        #I don't remember precisely why I did this, but I suspect it was either.
+        #Because conversion ran out of vRAM, or because Llama required special treatment that gptneox didn't.
+        if hf_config.model_type == "gpt_neox":
+          from transformers import GPTNeoXForCausalLM
+          hf_model = GPTNeoXForCausalLM(hf_config)
+        else:
+          hf_model = AutoModelForCausalLM.from_config(hf_config)
     else:
         hf_model = AutoModelForSequenceClassification.from_config(hf_config)
 
