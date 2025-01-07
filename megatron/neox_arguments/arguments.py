@@ -916,7 +916,6 @@ class NeoXArgs(*BASE_CLASSES):
 
         # pp_size and mp_size are only used here to compute dp world size and nowhere else.
         dp_world_size = (global_num_gpus / pp_size) / mp_size
-        print(dp_world_size)
         if not (dp_world_size % 1 == 0):
             error_message = (
                 f"{ERROR}"
@@ -1365,7 +1364,6 @@ class NeoXArgs(*BASE_CLASSES):
         At runtime, checks types are actually the type specified.
         """
         for field_name, field_def in self.__dataclass_fields__.items():
-            #print(field_name, '\n', field_def, '\n', getattr(self, field_name), '\n', type(field_name), '\n', type(getattr(self, field_name)), '\n\n')
             actual_value = getattr(self, field_name)
             if actual_value is None:
                 continue  # we allow for some values not to be configured
