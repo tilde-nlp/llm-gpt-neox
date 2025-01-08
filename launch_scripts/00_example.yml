@@ -1,0 +1,109 @@
+{
+  #Slurm launching relevant
+  "launcher": "slurm",
+  "deepspeed_slurm": true,
+  "no_ssh_check": true,
+
+  #Parallelism
+  "pipe_parallel_size": 8,
+  "model_parallel_size": 8,
+
+  "seed": 42,
+
+  #Tokenizer
+  "make_vocab_size_divisible_by": 8,
+  "tokenizer_type": "SPMTokenizer",
+  "vocab_file": "/project/project_465001281/IP/tokenizers/reasonablespm128k.model",
+
+  #Datasets
+  "train_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/en2_text_document", "/scratch/project_465001281/IP/tokenized/gpt_neox/lv2_text_document"],
+  "train_data_weights": [0.5, 0.5],
+  "valid_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/flores_en_text_document"],
+  "test_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/flores_en_text_document"],
+  "use_shared_fs": true,
+  "data_impl": "mmap",
+
+  #Model shape
+  "num_layers": 56,
+  "attention_config": [[["flash"], 56]],
+  "hidden_size": 7168,
+  "intermediate_size": 25600,
+  #It's a coincidence that this is the same as number of layers.
+  "num_attention_heads": 56,
+  "num_kv_heads": 56,
+  "seq_length": 4096,
+  "max_position_embeddings": 4096,
+  "norm": "layernorm",
+  "layernorm_epsilon": 1.0e-05,
+  "pos_emb": "rotary",
+  "no_weight_tying": true,
+  "activation": "gelu",
+
+  #If i recall correctly there were issues with the conversion script with biases.
+  #Also flash attention required some special configuration of biases.
+  "use_bias_in_mlp": true,
+  "use_bias_in_norms": true,
+  "use_bias_in_attn_linear": true,
+
+  #Weight initialization
+  "init_method": "small_init",
+  "init_method_std": 0.02,
+  "output_layer_init_method": "wang_init",
+
+  #Optimizer
+  "optimizer":
+    {
+      "type": "Adam",
+      "params": { "lr": 3.0e-4, "betas": [0.9, 0.95], "eps": 1.0e-8 },
+    },
+  "min_lr": 3.0e-5,
+  "lr_decay_iters": 10,
+  "lr_decay_style": "cosine",
+  "warmup": 0.01,
+
+  "zero_optimization":
+    {
+      "stage": 0,
+      "allgather_partitions": True,
+      "allgather_bucket_size": 50000000,
+      "overlap_comm": True,
+      "reduce_scatter": false,
+      "reduce_bucket_size": 50000000,
+      "contiguous_gradients": True,
+    },
+
+  #Batch settings
+  "train_micro_batch_size_per_gpu": 1,
+  "gradient_accumulation_steps": 8,
+  "train_iters": 1000,
+  "eval_interval": 100,
+  "eval_iters": 5,
+
+  #Regularization
+  "gradient_clipping": 1.0,
+  "weight_decay": 0.1,
+  "hidden_dropout": 0.0,
+  "attention_dropout": 0.0,
+
+  #Misc
+  "precision": "bfloat16",
+  "fp32_allreduce": true,
+
+  "num_workers": 2,
+
+  #Checkpoints
+  "checkpoint_factor": 5000,
+  "keep_last_n_checkpoints": 1,
+  "save": "/scratch/project_465001281/IP/checkpoints/00_example",
+  #"load": ""
+
+  #Logging
+  "log_interval": 1,
+  "steps_per_print": 1,
+  "log_grad_pct_zeros": True,
+  "log_grad_norm": True,
+
+  "wall_clock_breakdown": true,
+  "comms_logger":
+    { "enabled": false, "verbose": false, "prof_all": true, "debug": False},
+}
