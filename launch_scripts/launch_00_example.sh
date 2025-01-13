@@ -21,6 +21,11 @@
 
 set -euo pipefail
 
+NEOX_DIR="/project/project_465001281/llm-gpt-neox"
+
+export CC=gcc-12
+export CXX=g++-12
+
 #Don't understand, maybe necessary.
 export MEMORY_OPT_ALLREDUCE_SIZE=100000000
 
@@ -55,7 +60,7 @@ module load CrayEnv
 module load cray-python/3.9.13.1
 module load rocm/6.2.2
 module load gcc/12.2.0
-source /project/project_465001281/IP/ripped_env.sh
+source /scratch/project_465001281/containers/launch_conda_env.sh
 
 #Tell singularity to bind /project /scratch /flash folders etc.
 module use /appl/local/training/modules/AI-20240529/
@@ -85,9 +90,9 @@ done
 export DLTS_HOSTFILE=./hostfiles/hosts_$SLURM_JOBID
 
 #This command will tell deepy.py to run training with the config 00_example.yml.
-CMD="/project/project_465001281/IP/gpt-neox/deepy.py \
-  /project/project_465001281/IP/gpt-neox/train.py \
-  /project/project_465001281/IP/gpt-neox/launch_scripts/00_example.yml
+CMD="$NEOX_DIR/deepy.py \
+  $NEOX_DIR/train.py \
+  $NEOX_DIR/launch_scripts/00_example.yml
   "
 
 $CMD
