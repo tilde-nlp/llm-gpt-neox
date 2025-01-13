@@ -13,13 +13,13 @@
   #Tokenizer
   "make_vocab_size_divisible_by": 8,
   "tokenizer_type": "SPMTokenizer",
-  "vocab_file": "/project/project_465001281/IP/tokenizers/reasonablespm128k.model",
+  "vocab_file": "/scratch/project_465001281/tokenizers/reasonablespm128k.model",
 
   #Datasets
-  "train_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/en2_text_document", "/scratch/project_465001281/IP/tokenized/gpt_neox/lv2_text_document"],
-  "train_data_weights": [0.5, 0.5],
-  "valid_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/flores_en_text_document"],
-  "test_data_paths": ["/scratch/project_465001281/IP/tokenized/gpt_neox/flores_en_text_document"],
+  "train_data_paths": ["/scratch/project_465001281/tokenized/bilingual/lv_1_text_document"],
+  #"train_data_weights": [1.],
+  "valid_data_paths": ["/scratch/project_465001281/tokenized/bilingual/lv_1_text_document"],
+  "test_data_paths": ["/scratch/project_465001281/tokenized/bilingual/lv_1_text_document"],
   "use_shared_fs": true,
   "data_impl": "mmap",
 
@@ -94,7 +94,7 @@
   #Checkpoints
   "checkpoint_factor": 5000,
   "keep_last_n_checkpoints": 1,
-  "save": "/scratch/project_465001281/IP/checkpoints/00_example",
+  "save": "/scratch/project_465001281/checkpoints/00_tmp",
   #"load": ""
 
   #Logging
