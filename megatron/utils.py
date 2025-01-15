@@ -103,6 +103,25 @@ def get_ltor_masks_and_position_ids(
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
 
+    # Instruction mask.
+    # Find positions of markers (where tensor == marker_value)
+    marker_positions = (data == data[0][0]).nonzero(as_tuple=False)
+
+    # Process each sequence in the batch
+    # TODO: does it work with ZerO and other paralelisms?
+    # TODO: efficiency?
+    for batch_idx in range(data.size(0)):
+        # Get the positions of the markers in the current sequence
+        marker_indices = marker_positions[marker_positions[:, 0] == batch_idx, 1]
+
+        # FIXME: this is a quick workaround against crashing on bad datasamples
+        # If there are at least two markers, apply the mask
+        if len(marker_indices) >= 2:
+            for i in range(0, len(marker_indices) - 1, 2):
+                start_idx = marker_indices[i].item()  # Start of the current marker pair
+                end_idx = marker_indices[i + 1].item()  # End of the current marker pair
+                loss_mask[batch_idx, start_idx:end_idx + 1] = 0  # mask tokens between
+
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
     position_ids = position_ids.unsqueeze(0).expand_as(data)
