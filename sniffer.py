@@ -18,7 +18,7 @@ import json
 import csv
 import math
 
-from transformers import GPTNeoXForCausalLM, LlamaTokenizer, LLamaForCausalLM
+from transformers import GPTNeoXForCausalLM, LlamaTokenizer, LlamaForCausalLM
 import torch
 import torch.nn.functional as f
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
