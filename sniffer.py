@@ -18,7 +18,7 @@ import json
 import csv
 import math
 
-from transformers import GPTNeoXForCausalLM, LlamaTokenizer
+from transformers import GPTNeoXForCausalLM, LlamaTokenizer, LLamaForCausalLM
 import torch
 import torch.nn.functional as f
 from accelerate import init_empty_weights, load_checkpoint_and_dispatch
@@ -90,7 +90,7 @@ def get_merged_config(config_file_paths: list[str]) -> dict:
   """
   print("Reading and merging .yml configs.")
   config = {} #Will merge all configs into this.
-  for conf_path in args.configs:
+  for conf_path in config_file_paths:
     print("Opening " + conf_path)
     with open(conf_path, "r") as conf_file:
       conf = yaml.safe_load(conf_file)
@@ -352,7 +352,7 @@ def main():
   for dataset in datasets:
     dataset_ = []
     for sample in dataset:
-      dataset_.append(torch.tensor(sample, dtype = torch.long, device = "cuda:0")) #Not really sure how to choose the cuda here.
+      dataset_.append(torch.tensor(sample, dtype = torch.long, device = "cuda:7")) #Not really sure how to choose the cuda here.
     datasets_.append(dataset_)
   datasets = datasets_
 
@@ -377,7 +377,7 @@ def main():
         if args.architecture.upper() == "NEOX":
           model = GPTNeoXForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
         elif args.architecture.upper() == "LLAMA":
-          model = LlamaForCausalLM.from_pretrained(args.tmp_path)
+          model = LlamaForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
         else:
           raise ValueError("Huggingface --architecture " + str(args.architecture) + " not recgonized.")
       #model = load_checkpoint_and_dispatch(model, args.tmp_path, device_map = "auto", no_split_module_classes=['Block'])
