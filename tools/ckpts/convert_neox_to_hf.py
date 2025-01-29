@@ -540,8 +540,23 @@ def convert(
         print("Auto-detecting precision to save model into...")
         # save model in FP16 if Deepspeed fp16 was used in config, else 32 bit
         fp16 = get_key(loaded_config, "fp16")
+        bf16 = get_key(loaded_config, "bf16")
 
-        if fp16:
+        #Ingus - I Don't give guarantees this fix works under all circumstances.
+        precision = get_key(loaded_config, "precision")
+        print("If code crashes during the fp16 bf16 conversion part, blame ingus.")
+        if precision == "fp16" or fp16:
+            print("Attempting fp16 conversion.")
+            hf_model.half()
+        elif precision == "bfloat16" or bf16:
+            print("Attempting bf16 conversion.")
+            hf_model.to(dtype=torch.bfloat16)
+        else:
+            print("Doing fp32.")
+            hf_model.to(torch.float)
+
+        #if fp16: Ingus - Disable old code out.
+        if False:
             try:
                 # current behavior is to pass "fp16": {"enabled": true}, when using upstream Deepspeed
                 if fp16["enabled"]:
