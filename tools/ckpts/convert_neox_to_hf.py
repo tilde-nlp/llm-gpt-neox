@@ -431,12 +431,13 @@ def reshard_and_split_qkv(
             dimk = round(dim1 * hf_config.num_key_value_heads / divider)
             dimv = dimk
             q, k, v = torch.split(sharded_qkv, [dimq, dimk, dimv], dim=1)
+        print(q.shape, k.shape, v.shape)
 
         #Comment from ingus - the squeeze seems to have no effect. Original author probably didn't understand what they were doing.
         # we have to do additional reshape for each individual tensor now,
         # into the expected square (or smaller than square, for K/V tensors) shape
-        q, k, v = q.squeeze(dim=2), k.squeeze(dim=2), v.squeeze(dim=2)
-        q = q.view(
+        #q, k, v = q.squeeze(dim=2), k.squeeze(dim=2), v.squeeze(dim=2)
+        q = q.reshape(
             hf_config.num_attention_heads,
             hf_config.hidden_size // hf_config.num_attention_heads,
             hf_config.hidden_size,
