@@ -385,41 +385,54 @@ def reshard_and_split_qkv(
         )
         # should now have shape [TP_SIZE, (hidden_size + 2 * kv_hidden_size) / TP_SIZE, hidden_size].
 
-        sharded_qkv = sharded_qkv.view(
-            len(loaded_tp_ranks),
-            hf_config.num_attention_heads // len(loaded_tp_ranks),
-            int(
-                hf_config.hidden_size
-                // hf_config.num_attention_heads
-                * (
-                    1
-                    + 2 * hf_config.num_key_value_heads / hf_config.num_attention_heads
-                )
-            ),
-            hf_config.hidden_size,
-        )  # is meant to convert to shape [TP_SIZE, NUM_QUERY_HEADS_PER_SHARD, dims_per_head * (1 + 2 * kv-to-q head ratio), hidden_size]
-
-        q, k, v = torch.split(
-            sharded_qkv,
-            [
-                hf_config.hidden_size // hf_config.num_attention_heads,
+        #Ingus does degeneracy.
+        #I do not understand the format used by GPT NeoX for storing qkv.
+        #Experimentally it seems like the original code works when GQA is not used.
+        #When GQA is used, then the new code I wrote seems to work.
+        if hf_config.num_key_value_heads == hf_config.num_attention_heads:
+            sharded_qkv = sharded_qkv.view(
+                len(loaded_tp_ranks),
+                hf_config.num_attention_heads // len(loaded_tp_ranks),
                 int(
-                    (hf_config.num_key_value_heads / hf_config.num_attention_heads)
-                    * hf_config.hidden_size
+                    hf_config.hidden_size
                     // hf_config.num_attention_heads
+                    * (
+                        1
+                        + 2 * hf_config.num_key_value_heads / hf_config.num_attention_heads
+                    )
                 ),
-                int(
-                    (hf_config.num_key_value_heads / hf_config.num_attention_heads)
-                    * hf_config.hidden_size
-                    // hf_config.num_attention_heads
-                ),
-            ],
-            dim=2,
-        )
-        # splits along the (dims_per_head * (1 + 2 * kv-to-q head ratio)_ dim to get 3 tensors:
-        # 1 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, dims_per_head, hidden_size] and 2 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, (dims_per_head / kv-to-q head ratio), hidden_size]
-        # these are the Q, and K, V tensors respectively.
+                hf_config.hidden_size,
+            )  # is meant to convert to shape [TP_SIZE, NUM_QUERY_HEADS_PER_SHARD, dims_per_head * (1 + 2 * kv-to-q head ratio), hidden_size]
 
+            q, k, v = torch.split(
+                sharded_qkv,
+                [
+                    hf_config.hidden_size // hf_config.num_attention_heads,
+                    int(
+                        (hf_config.num_key_value_heads / hf_config.num_attention_heads)
+                        * hf_config.hidden_size
+                        // hf_config.num_attention_heads
+                    ),
+                    int(
+                        (hf_config.num_key_value_heads / hf_config.num_attention_heads)
+                        * hf_config.hidden_size
+                        // hf_config.num_attention_heads
+                    ),
+                ],
+                dim=2,
+            )
+            # splits along the (dims_per_head * (1 + 2 * kv-to-q head ratio)_ dim to get 3 tensors:
+            # 1 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, dims_per_head, hidden_size] and 2 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, (dims_per_head / kv-to-q head ratio), hidden_size]
+            # these are the Q, and K, V tensors respectively.
+        else:
+            dim1  = sharded_qkv.shape[1]
+            divider = hf_config.num_attention_heads + hf_config.num_key_value_heads * 2
+            dimq = round(dim1 * hf_config.num_attention_heads / divider)
+            dimk = round(dim1 * hf_config.num_key_value_heads / divider)
+            dimv = dimk
+            q, k, v = torch.split(sharded_qkv, [dimq, dimk, dimv], dim=1)
+
+        #Comment from ingus - the squeeze seems to have no effect. Original author probably didn't understand what they were doing.
         # we have to do additional reshape for each individual tensor now,
         # into the expected square (or smaller than square, for K/V tensors) shape
         q, k, v = q.squeeze(dim=2), k.squeeze(dim=2), v.squeeze(dim=2)
