@@ -354,6 +354,12 @@ def upload_checkpoint(iteration, neox_args):
 def save_checkpoint(neox_args, iteration, model, optimizer, lr_scheduler):
     """Save a model checkpoint."""
 
+    if neox_args.iteration_offset:
+        print_rank_0("----------------------------------------------------------- Current train iteration: %s" % iteration)
+        print_rank_0("----------------------------------------------------------- Checkpoint start iteration: %s" % neox_args.iteration_offset)
+        iteration = neox_args.iteration_offset + iteration
+        print_rank_0("----------------------------------------------------------- Adjusted iteration: %s" % iteration)
+
     if neox_args.deepspeed:
         save_ds_checkpoint(iteration, model, neox_args)
     else:
@@ -419,6 +425,19 @@ def load_checkpoint(
     # Set iteration.
     if neox_args.finetune:
         iteration = 0
+    elif neox_args.iteration_offset:
+        # TODO: verify format of the checkpoint name
+        print_rank_0("----------------------------------------------------------- Retrieved checkpoint name: %s" % checkpoint_name)
+        print_rank_0("----------------------------------------------------------- Tag: %s" % tag)
+        print_rank_0("----------------------------------------------------------- Default iteration: %s" % iteration)
+        loaded_iteration =                 available_checkpoints = sorted(
+                    [
+                        int(i.name.replace("global_step", ""))
+                        for i in Path(neox_args.load).glob("global_step*")
+                    ])[-1]
+        iteration = loaded_iteration - neox_args.iteration_offset
+        assert iteration >= 0
+        print_rank_0("----------------------------------------------------------- Adjusted iteration: %s" % iteration)
     else:
         if "iteration" in state_dict:
             iteration = state_dict["iteration"]
