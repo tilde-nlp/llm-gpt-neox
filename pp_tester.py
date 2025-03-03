@@ -272,7 +272,10 @@ def get_untested_checkpoints(checkpoint_dir):
 
     # Get all untested checkpoints
     if latest_tested:
-        untested_checkpoints = [ckpt for ckpt in checkpoints if ckpt > latest_tested]
+        untested_checkpoints = [
+            ckpt for ckpt in checkpoints
+            if int(re.search(r'\d+', ckpt).group()) > int(re.search(r'\d+', latest_tested).group())
+        ]
     else:
         untested_checkpoints = checkpoints
 
@@ -363,7 +366,7 @@ def main():
 
         ckpt = cp_path + "/" + ckpt
 
-        print("New checkpoint detected: %s" % ckpt)
+        print(" ----- New checkpoint detected: %s" % ckpt)
 
         # Convert to hugginface checkpoint format.
         convert_checkpoint(ckpt, args.tmp_path, config, args.architecture)
