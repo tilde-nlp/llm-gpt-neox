@@ -11,6 +11,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import string
 import json
 import csv
 import math
@@ -256,19 +257,19 @@ def get_config(config_file_path: str) -> dict:
     return config
 
 
-def create_unique_temp_subfolder(root_temp_dir):
-    # Generate a unique folder name using timestamp + random number
-    timestamp = time.strftime("%Y%m%d_%H%M%S")
-    random_num = random.randint(0, 100)
-    unique_folder_name = f"{timestamp}_{random_num}"
+def create_temp_subfolder(root_temp_dir):
+    # Generate a unique folder name using processor time, three random letters, and three random digits
+    letters = ''.join(random.choices(string.ascii_lowercase, k=3))  # 3 random lowercase letters
+    numbers = ''.join(random.choices(string.digits, k=3))  # 3 random digits
+    unique_id = f"{int(time.process_time() * 1e6)}_{letters}{numbers}"
 
-    # Construct full path
-    unique_folder_path = os.path.join(root_temp_dir, unique_folder_name)
+    temp_subfolder = os.path.join(root_temp_dir, unique_id)
 
     # Create the directory if it doesn't exist
-    os.makedirs(unique_folder_path, exist_ok=True)
+    os.makedirs(temp_subfolder, exist_ok=True)
 
-    return unique_folder_path
+    return temp_subfolder
+
 
 
 def main():
@@ -313,7 +314,7 @@ def main():
     log_file_writer = csv.writer(log_file)
 
     # create a unique temp folder in the root temp folder
-    tmp_path = create_unique_temp_subfolder(args.tmp_path)
+    tmp_path = create_temp_subfolder(args.tmp_path)
 
     # Look for untested checkpoints
     ckpt = args.ckpt_path
