@@ -385,45 +385,59 @@ def reshard_and_split_qkv(
         )
         # should now have shape [TP_SIZE, (hidden_size + 2 * kv_hidden_size) / TP_SIZE, hidden_size].
 
-        sharded_qkv = sharded_qkv.view(
-            len(loaded_tp_ranks),
-            hf_config.num_attention_heads // len(loaded_tp_ranks),
-            int(
-                hf_config.hidden_size
-                // hf_config.num_attention_heads
-                * (
-                    1
-                    + 2 * hf_config.num_key_value_heads / hf_config.num_attention_heads
-                )
-            ),
-            hf_config.hidden_size,
-        )  # is meant to convert to shape [TP_SIZE, NUM_QUERY_HEADS_PER_SHARD, dims_per_head * (1 + 2 * kv-to-q head ratio), hidden_size]
-
-        q, k, v = torch.split(
-            sharded_qkv,
-            [
-                hf_config.hidden_size // hf_config.num_attention_heads,
+        #Ingus does degeneracy.
+        #I do not understand the format used by GPT NeoX for storing qkv.
+        #Experimentally it seems like the original code works when GQA is not used.
+        #When GQA is used, then the new code I wrote seems to work.
+        if hf_config.num_key_value_heads == hf_config.num_attention_heads:
+            sharded_qkv = sharded_qkv.view(
+                len(loaded_tp_ranks),
+                hf_config.num_attention_heads // len(loaded_tp_ranks),
                 int(
-                    (hf_config.num_key_value_heads / hf_config.num_attention_heads)
-                    * hf_config.hidden_size
+                    hf_config.hidden_size
                     // hf_config.num_attention_heads
+                    * (
+                        1
+                        + 2 * hf_config.num_key_value_heads / hf_config.num_attention_heads
+                    )
                 ),
-                int(
-                    (hf_config.num_key_value_heads / hf_config.num_attention_heads)
-                    * hf_config.hidden_size
-                    // hf_config.num_attention_heads
-                ),
-            ],
-            dim=2,
-        )
-        # splits along the (dims_per_head * (1 + 2 * kv-to-q head ratio)_ dim to get 3 tensors:
-        # 1 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, dims_per_head, hidden_size] and 2 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, (dims_per_head / kv-to-q head ratio), hidden_size]
-        # these are the Q, and K, V tensors respectively.
+                hf_config.hidden_size,
+            )  # is meant to convert to shape [TP_SIZE, NUM_QUERY_HEADS_PER_SHARD, dims_per_head * (1 + 2 * kv-to-q head ratio), hidden_size]
 
+            q, k, v = torch.split(
+                sharded_qkv,
+                [
+                    hf_config.hidden_size // hf_config.num_attention_heads,
+                    int(
+                        (hf_config.num_key_value_heads / hf_config.num_attention_heads)
+                        * hf_config.hidden_size
+                        // hf_config.num_attention_heads
+                    ),
+                    int(
+                        (hf_config.num_key_value_heads / hf_config.num_attention_heads)
+                        * hf_config.hidden_size
+                        // hf_config.num_attention_heads
+                    ),
+                ],
+                dim=2,
+            )
+            # splits along the (dims_per_head * (1 + 2 * kv-to-q head ratio)_ dim to get 3 tensors:
+            # 1 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, dims_per_head, hidden_size] and 2 x [TP_SIZE, NUM_Q_HEADS_PER_SHARD, (dims_per_head / kv-to-q head ratio), hidden_size]
+            # these are the Q, and K, V tensors respectively.
+        else:
+            dim1  = sharded_qkv.shape[1]
+            divider = hf_config.num_attention_heads + hf_config.num_key_value_heads * 2
+            dimq = round(dim1 * hf_config.num_attention_heads / divider)
+            dimk = round(dim1 * hf_config.num_key_value_heads / divider)
+            dimv = dimk
+            q, k, v = torch.split(sharded_qkv, [dimq, dimk, dimv], dim=1)
+        print(q.shape, k.shape, v.shape)
+
+        #Comment from ingus - the squeeze seems to have no effect. Original author probably didn't understand what they were doing.
         # we have to do additional reshape for each individual tensor now,
         # into the expected square (or smaller than square, for K/V tensors) shape
-        q, k, v = q.squeeze(dim=2), k.squeeze(dim=2), v.squeeze(dim=2)
-        q = q.view(
+        #q, k, v = q.squeeze(dim=2), k.squeeze(dim=2), v.squeeze(dim=2)
+        q = q.reshape(
             hf_config.num_attention_heads,
             hf_config.hidden_size // hf_config.num_attention_heads,
             hf_config.hidden_size,
@@ -526,8 +540,23 @@ def convert(
         print("Auto-detecting precision to save model into...")
         # save model in FP16 if Deepspeed fp16 was used in config, else 32 bit
         fp16 = get_key(loaded_config, "fp16")
+        bf16 = get_key(loaded_config, "bf16")
 
-        if fp16:
+        #Ingus - I Don't give guarantees this fix works under all circumstances.
+        precision = get_key(loaded_config, "precision")
+        print("If code crashes during the fp16 bf16 conversion part, blame ingus.")
+        if precision == "fp16" or fp16:
+            print("Attempting fp16 conversion.")
+            hf_model.half()
+        elif precision == "bfloat16" or bf16:
+            print("Attempting bf16 conversion.")
+            hf_model.to(dtype=torch.bfloat16)
+        else:
+            print("Doing fp32.")
+            hf_model.to(torch.float)
+
+        #if fp16: Ingus - Disable old code out.
+        if False:
             try:
                 # current behavior is to pass "fp16": {"enabled": true}, when using upstream Deepspeed
                 if fp16["enabled"]:
