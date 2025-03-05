@@ -5,7 +5,7 @@ It sniffs for new checkpoint, evaluates them, and logs the results.
 Script assumes you're using a sentencepiece tokenizer model.
 """
 
-GPT_NEOX_PATH = "/project/project_465001281/IP/gpt-neox/"
+GPT_NEOX_PATH = "/project/project_465001281/IP/llm-gpt-neox/"
 
 import yaml
 import argparse
@@ -103,6 +103,7 @@ def get_merged_config(config_file_paths: list[str]) -> dict:
     print("Done with the configs.")
 
     return config
+
 
 
 def load_jsonl(path: str) -> list[str]:
