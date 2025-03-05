@@ -430,7 +430,7 @@ def load_checkpoint(
         print_rank_0("----------------------------------------------------------- Retrieved checkpoint name: %s" % checkpoint_name)
         print_rank_0("----------------------------------------------------------- Tag: %s" % tag)
         print_rank_0("----------------------------------------------------------- Default iteration: %s" % iteration)
-        loaded_iteration =                 available_checkpoints = sorted(
+        loaded_iteration = sorted(
                     [
                         int(i.name.replace("global_step", ""))
                         for i in Path(neox_args.load).glob("global_step*")
@@ -439,6 +439,7 @@ def load_checkpoint(
         assert iteration >= 0
         print_rank_0("----------------------------------------------------------- Adjusted iteration: %s" % iteration)
     else:
+        # TODO: verify this doesn run
         if "iteration" in state_dict:
             iteration = state_dict["iteration"]
         else:
