@@ -41,7 +41,7 @@ for CKPT_DIR in $(ls -d "$ROOT_CKPT_DIR"/global_step* 2>/dev/null | sort -V); do
          --time="$TIME" \
          --nodes="$NODES" \
          singularity exec "$CONTAINER_PATH" \
-         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR'" &
+         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR' --tmp-path /scratch/project_465001281/MK/tmp" &
 
     # Brief pause to prevent overwhelming the system
     # sleep 1
