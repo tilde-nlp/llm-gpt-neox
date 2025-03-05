@@ -78,7 +78,7 @@ def parse_args():
     parser.add_argument(
         "--tmp-path",
         type=str,
-        default="./tmp/hf_checkpoint/",
+        required=True,
         help="Path to 'root' temporary folder for hf checkpoints."
     )
 
