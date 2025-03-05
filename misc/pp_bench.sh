@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Ensure correct usage
-if [ "$#" -ne 3 ]; then
-    echo "Usage: $0 <root_ckpt_dir> <config_file> <test_folder>"
+if [ "$#" -ne 4 ]; then
+    echo "Usage: $0 <root_ckpt_dir> <config_file> <test_folder> <root_temp_folder>"
     exit 1
 fi
 
@@ -10,6 +10,7 @@ fi
 ROOT_CKPT_DIR=$1
 CONFIG_FILE=$2
 TEST_FOLDER=$3
+TMP_PATH=$4
 
 # SLURM parameters
 ACCOUNT="project_465001281"
@@ -41,7 +42,7 @@ for CKPT_DIR in $(ls -d "$ROOT_CKPT_DIR"/global_step* 2>/dev/null | sort -V); do
          --time="$TIME" \
          --nodes="$NODES" \
          singularity exec "$CONTAINER_PATH" \
-         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR' --tmp-path /scratch/project_465001281/MK/tmp" &
+         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR' --tmp-path '$TMP_PATH'" &
 
     # Brief pause to prevent overwhelming the system
     # sleep 1
