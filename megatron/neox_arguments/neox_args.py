@@ -858,13 +858,6 @@ class NeoXArgsOther(NeoXArgsTemplate):
     Set during training
     """
 
-    # IMPORTANT: this tells what iteration the current datapack was started on
-
-    iteration_offset: int = None
-    """
-    This should be set to the iteration value of the loaded checkpoint
-    """
-
     do_train: bool = None
     """
     Set during training

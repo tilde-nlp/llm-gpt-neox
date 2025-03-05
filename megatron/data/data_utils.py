@@ -536,7 +536,6 @@ def build_train_valid_test_data_loaders(neox_args):
         # Number of train/valid/test samples.
         if neox_args.train_iters is not None:
             train_iters = neox_args.train_iters
-            print_rank_0("Building dataset for a maximum of {} training iterations.".format(train_iters))
             eval_iters = (
                 train_iters // neox_args.eval_interval + 1
             ) * neox_args.eval_iters
