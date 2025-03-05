@@ -5,7 +5,7 @@ It sniffs for new checkpoint, evaluates them, and logs the results.
 Script assumes you're using a sentencepiece tokenizer model.
 """
 
-GPT_NEOX_PATH = "/project/project_465001281/IP/llm-gpt-neox/"
+GPT_NEOX_PATH = "/project/project_465001281/llm-gpt-neox"
 
 import yaml
 import argparse
@@ -40,11 +40,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--configs",
+        "--config",
         type=str,
-        nargs="+",
         required=True,
-        help="Paths to .yml files being used for gptneox training.py"
+        help="Paths to .yml file being used for gptneox training.py"
     )
 
     parser.add_argument(
@@ -66,7 +65,7 @@ def parse_args():
     parser.add_argument(
         "--log-file",
         type=str,
-        default="logs.csv",
+        required=True,
         help="Path to .csv file to log to. Appends to existing, if it already exists."
     )
 
@@ -84,26 +83,6 @@ def parse_args():
     pass
 
     return args
-
-
-def get_merged_config(config_file_paths: list[str]) -> dict:
-    """
-    Reads list of gpt neox config yml files and merges them into one python dict.
-    """
-    print("Reading and merging .yml configs.")
-    config = {}  # Will merge all configs into this.
-    for conf_path in config_file_paths:
-        print("Opening " + conf_path)
-        with open(conf_path, "r") as conf_file:
-            conf = yaml.safe_load(conf_file)
-            for key in conf:
-                if key in config:
-                    raise ValueError("Duplicate key in configs! The bad key is: " + str(key))
-                config[key] = conf[key]
-    print("Done with the configs.")
-
-    return config
-
 
 
 def load_jsonl(path: str) -> list[str]:
@@ -237,78 +216,70 @@ def convert_checkpoint(step_path: str, output_path: str, config: dict, model_typ
     print("Converted the checkpoint.")
 
 
-def get_latest_tested(cp_path: str) -> int:
+def log_latest_tested(checkpoint_dir, checkpoint_name):
     """
-    Gets the step number of the most recently evaluated checkpoint.
-
-    :param cp_path: Path to checkpoint folder (including folder itself).
-    :note: If none have been tested, returns -1.
+    Logs the name of the latest tested checkpoint in 'latest_tested' file.
+    Verifies that the new checkpoint is later than the current one if it exists.
     """
+    # Define the path to the latest_tested file
+    latest_tested_path = os.path.join(checkpoint_dir, 'latest_tested')
 
-    file_path = os.path.join(cp_path, "latest_tested.txt")
-    if os.path.isfile(file_path):
-        with open(file_path, "r") as file:
-            return int(file.read())
+    # Check if the checkpoint name is valid
+    if not re.match(r"global_step\d+", checkpoint_name):
+        raise ValueError(f"Invalid checkpoint name: {checkpoint_name}")
+
+    # Extract the step number from the checkpoint name
+    new_step = int(re.findall(r'\d+', checkpoint_name)[0])
+
+    # Check if latest_tested file exists and is not empty
+    if os.path.exists(latest_tested_path):
+        with open(latest_tested_path, 'r') as f:
+            current_latest = f.read().strip()
+
+        if current_latest:
+            # Extract the step number from the current latest checkpoint
+            current_step = int(re.findall(r'\d+', current_latest)[0])
+
+            # Verify that the new checkpoint is later
+            if new_step <= current_step:
+                raise ValueError(f"New checkpoint '{checkpoint_name}' is not later than current '{current_latest}'")
+
+    # Log the new latest tested checkpoint
+    with open(latest_tested_path, 'w') as f:
+        f.write(checkpoint_name)
+
+    print(f"Logged '{checkpoint_name}' as the latest tested checkpoint.")
+
+
+def get_untested_checkpoints(checkpoint_dir):
+    # Define the pattern for checkpoint folders (e.g., global_step10000)
+    checkpoint_pattern = re.compile(r"global_step\d+")
+
+    # Get all items in the directory
+    items = os.listdir(checkpoint_dir)
+
+    # Get all checkpoint names
+    checkpoints = sorted([item for item in items if checkpoint_pattern.match(item)],
+                         key=lambda x: int(re.findall(r'\d+', x)[0]))
+
+    # Read the latest tested checkpoint
+    latest_tested_path = os.path.join(checkpoint_dir, 'latest_tested')
+    if os.path.exists(latest_tested_path):
+        with open(latest_tested_path, 'r') as f:
+            latest_tested = f.read().strip()
     else:
-        return -1
+        latest_tested = None
 
-
-def set_latest_tested(cp_path: str, step: int):
-    """
-    Saves the latest tested checkpoint step number.
-
-    :param cp_path: Path to checkpoint folder (including folder itself).
-    :param step: Step number to write to file.
-    """
-    file_path = os.path.join(cp_path, "latest_tested.txt")
-    with open(file_path, "w") as file:
-        print(step, file=file)
-
-
-def get_latest_checkpoint(cp_path) -> int:
-    """
-    Returns step number of latest checkpoint.
-
-    :param cp_path: Path to checkpoint folder (including folder itself).
-    :note: If there's no checkpoints, just returns -1.
-    """
-    # Just in case check if the folder even exists.
-    if not os.path.isdir(cp_path):
-        print("WARNING: Checkpoint folder does not exist!")
-        return -1
-
-    # Get all folder/file names in cp_path.
-    files = os.listdir(cp_path)
-
-    # Find max checkpoint step number.
-    mx = -1
-    number_suffix_pattern = re.compile(r'\d+$')
-    for file in files:
-        match = number_suffix_pattern.search(file)
-        if match:
-            mx = max(mx, int(match.group()))
-
-    return mx
-
-
-def new_checkpoint(cp_path) -> tuple[bool, int]:
-    """
-    Checks whether there's a new checkpoint.
-
-    :param cp_path: Path to checkpoint folder (including folder itself).
-    :return: Tuple where first elements is True/False for whether there's a checkpoint.
-             Second number is just the latest checkpoint or -1 if there is none.
-    """
-    latest_checkpoint = get_latest_checkpoint(cp_path)
-    print("Current latest ckpt: %s" % latest_checkpoint)
-    print("Latest checked ckpt: %s" % get_latest_tested(cp_path))
-    if latest_checkpoint != get_latest_tested(cp_path):
-        return (True, latest_checkpoint)
+    # Get all untested checkpoints
+    if latest_tested:
+        untested_checkpoints = [
+            ckpt for ckpt in checkpoints
+            if int(re.search(r'\d+', ckpt).group()) > int(re.search(r'\d+', latest_tested).group())
+        ]
     else:
-        return (False, latest_checkpoint)
+        untested_checkpoints = checkpoints
 
-
-args = None
+    return untested_checkpoints
 
 
 def get_cross_entropy(model, dataset: list[torch.Tensor]) -> tuple[float, float]:
@@ -329,25 +300,41 @@ def get_cross_entropy(model, dataset: list[torch.Tensor]) -> tuple[float, float]
         return cummulative_CE.cpu().item(), (cummulative_CE / token_count).cpu().item()
 
 
+def get_config(config_file_path: str) -> dict:
+    """
+    Loads gpt neox train config yaml into python dict.
+    """
+    print("Reading configuration file %s." % config_file_path)
+    config = {}  # Will merge all configs into this.
+    with open(config_file_path, "r") as conf_file:
+        conf = yaml.safe_load(conf_file)
+        for key in conf:
+            if key in config:
+                raise ValueError("Duplicate key in config! The bad key is: " + str(key))
+            config[key] = conf[key]
+
+    return config
+
+
 def main():
     args = parse_args()
 
     # Snag configs
-    config: dict = get_merged_config(args.configs)
+    config: dict = get_config(args.config)
 
     # Validate config files.
     if "save" not in config:
         raise ValueError(
-            ".yml Configs didn't contain the 'save' key, so code can't infer where the checkpoint folder is.")
+            "%s didn't contain the 'save' key, so code can't infer where the checkpoint folder is." % args.config)
 
     # Validate tokenizer
     pass
 
     names, datasets = load_datasets(args.test_folder)
 
-    print("Loading tokenizer.")
+    print("Loading tokenizer from %s " % config["vocab_file"])
     tokenizer = LlamaTokenizer.from_pretrained(config["vocab_file"])
-    print("Finish loading tokenizer.")
+    print("Finished loading tokenizer.")
 
     # Tokenize data.
     print("Tokenizing test datasets.")
@@ -360,6 +347,7 @@ def main():
     for dataset in datasets:
         dataset_ = []
         for sample in dataset:
+            # FIXME: might cause issues if model doesnt fit into single gpu
             dataset_.append(
                 torch.tensor(sample, dtype=torch.long, device="cuda:0"))  # Not really sure how to choose the cuda here.
         datasets_.append(dataset_)
@@ -369,58 +357,57 @@ def main():
     log_file = open_log_file(args.log_file, names)
     log_file_writer = csv.writer(log_file)
 
-    # Sniff for checkpoints
+    # Look for untested checkpoints
     cp_path = config["save"]  # This should be the folder that contains all the checkpoints.
 
-    while True:
-        # Detect whether there's a new checkpoint.
-        have_new, step_number = new_checkpoint(cp_path)
-        if have_new:
-            print("New checkpoint detected at step " + str(step_number) + ".")
+    untested_checkpoints = get_untested_checkpoints(cp_path)  # this should already be sorted
+    print("Found the following untested checkpoints: %s" % untested_checkpoints)
+    for ckpt in untested_checkpoints:
 
-            # Convert to hugginface checkpoint format.
-            convert_checkpoint(cp_path + "/global_step" + str(step_number), args.tmp_path, config, args.architecture)
+        ckpt = cp_path + "/" + ckpt
 
-            # Load model.
-            with init_empty_weights():
-                if args.architecture.upper() == "NEOX":
-                    model = GPTNeoXForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
-                elif args.architecture.upper() == "LLAMA":
-                    model = LlamaForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
-                else:
-                    raise ValueError("Huggingface --architecture " + str(args.architecture) + " not recgonized.")
-            # model = load_checkpoint_and_dispatch(model, args.tmp_path, device_map = "auto", no_split_module_classes=['Block'])
-            print(model.hf_device_map)
+        print(" ----- New checkpoint detected: %s" % ckpt)
 
-            # Evaluate checkpoint.
-            print("Performing testing.")
-            results: list[float] = []  # Will contain our testing results.
-            results.append(time.time())
-            results.append(step_number)
-            for test_index in range(len(datasets)):
-                totalCE, averageCE = get_cross_entropy(model, datasets[test_index])
-                results.append(totalCE)
-                results.append(averageCE)
-                results.append(math.e ** results[-1])
-                print(names[test_index], ": Perplexity", results[-1], "; Total crossentropy", results[-3])
-            print("Finished evaluating testing.")
+        # Convert to hugginface checkpoint format.
+        convert_checkpoint(ckpt, args.tmp_path, config, args.architecture)
 
-            del model
+        # Load model.
+        with init_empty_weights():
+            if args.architecture.upper() == "NEOX":
+                model = GPTNeoXForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
+            elif args.architecture.upper() == "LLAMA":
+                # FIXME: hardcoded, i think this might not work from models that dont fit into one gpu
+                model = LlamaForCausalLM.from_pretrained(args.tmp_path, device_map={"": "cuda:0"})
+            else:
+                raise ValueError("Huggingface --architecture " + str(args.architecture) + " not recgonized.")
+        # model = load_checkpoint_and_dispatch(model, args.tmp_path, device_map = "auto", no_split_module_classes=['Block'])
+        print(model.hf_device_map)
 
-            # Log.
-            log_file_writer.writerow(results)
-            log_file.flush()
+        # Evaluate checkpoint.
+        print("Performing testing.")
+        results = []  # Will contain our testing results.
+        results.append(time.time())
+        results.append(os.path.basename(ckpt))
+        for test_index in range(len(datasets)):
+            totalCE, averageCE = get_cross_entropy(model, datasets[test_index])
+            results.append(totalCE)
+            results.append(averageCE)
+            results.append(math.e ** results[-1])
+            print(names[test_index], ": Perplexity", results[-1], "; Total crossentropy", results[-3])
+        print("Finished evaluating testing.")
 
-            # Clean up.
-            print("Deleting checkpoint.")
-            shutil.rmtree(args.tmp_path)
+        del model
 
-            set_latest_tested(cp_path, step_number)
+        # Log.
+        log_file_writer.writerow(results)
+        log_file.flush()
 
-        print("Sleeping")
-        time.sleep(30)
+        # Clean up.
+        print("Deleting temporary HF checkpoint from %s " % args.tmp_path)
+        shutil.rmtree(args.tmp_path)
+
+        log_latest_tested(cp_path, os.path.basename(ckpt))
 
 
 if __name__ == "__main__":
-    print("I'm not dead")
     main()
