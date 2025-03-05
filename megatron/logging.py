@@ -367,20 +367,9 @@ def training_log(
             tensorboard_writer=neox_args.tensorboard_writer,
             comet_experiment=neox_args.comet_experiment,
         )
-
-        # IMPORTANT: updated to show 'global' iteration counts
-        if neox_args.iteration_offset:
-
-            log_string += " iteration {:8d} [{:8d}]/{:8d} [{:8d}] |".format(
-                iteration, iteration + neox_args.iter_offset,
-                neox_args.train_iters, neox_args.train_iters + neox_args.iter_offset
-            )
-
-        else:
-            log_string += " iteration {:8d}/{:8d} |".format(
-                iteration, neox_args.train_iters
-            )
-
+        log_string += " iteration {:8d}/{:8d} |".format(
+            iteration, neox_args.train_iters
+        )
         log_string += " elapsed time per iteration (ms): {:.1f} |".format(
             elapsed_time * 1000.0 / neox_args.log_interval
         )
