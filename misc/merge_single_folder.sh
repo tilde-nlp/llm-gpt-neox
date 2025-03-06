@@ -2,9 +2,11 @@
 
 # Base directory containing the subfolders
 # Example:
+# folder to merge
 BASE_DIR="/scratch/project_465001281/tokenized/1B_gucci_sliced/merged/N"
-OUTPUT_DIR="/scratch/project_465001281/tokenized/1B_gucci_sliced/merged/N/1B_N_4"
+OUTPUT_DIR="/scratch/project_465001281/tokenized/1B_gucci_sliced/merged/N/1B_N_4" # this will create an unnecessary subfolder for some reason
 CONTAINER_PATH="/scratch/project_465001281/MK/rocm603_martin_local"
+ # needs to point to the folder where merge_datasets_mmap.py is located
 PROJECT_DIR="/project/project_465001281/llm-gpt-neox/tools/datasets"
 
 # Get the first subfolder (for testing one iteration)
@@ -30,7 +32,7 @@ echo "Merging '$folder_name'"
 # Run the merge job using srun (not in background)
 srun --account=project_465001281 \
      --partition=dev-g \
-     --gpus-per-node=4 \
+     --gpus-per-node=1 \
      --ntasks-per-node=1 \
      --cpus-per-task=28 \
      --mem-per-gpu=60G \
