@@ -13,6 +13,9 @@ TEST_FOLDER=$3
 TMP_PATH=$4
 START_ITERATION=${5:-0}  # Default to 0 if not provided
 
+# Convert START_ITERATION to an integer
+START_ITERATION=$((START_ITERATION + 0))
+
 # SLURM parameters
 ACCOUNT="project_465001281"
 PARTITION="standard-g"
@@ -46,8 +49,9 @@ echo ""
 
 # Iterate through each checkpoint
 for CKPT_DIR in "${CHECKPOINTS[@]}"; do
-    # Extract iteration number
+    # Extract iteration number and convert to an integer
     ITERATION=$(basename "$CKPT_DIR" | sed 's/global_step//')
+    ITERATION=$((ITERATION + 0))  # Force numeric conversion
 
     # Log whether the checkpoint is being evaluated or skipped
     if [ "$ITERATION" -lt "$START_ITERATION" ]; then
