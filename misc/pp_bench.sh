@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Ensure correct usage
-if [ "$#" -ne 4 ]; then
-    echo "Usage: $0 <root_ckpt_dir> <config_file> <test_folder> <root_temp_folder>"
+if [ "$#" -lt 4 ] || [ "$#" -gt 5 ]; then
+    echo "Usage: $0 <root_ckpt_dir> <config_file> <test_folder> <root_temp_folder> [start_iteration]"
     exit 1
 fi
 
@@ -11,6 +11,7 @@ ROOT_CKPT_DIR=$1
 CONFIG_FILE=$2
 TEST_FOLDER=$3
 TMP_PATH=$4
+START_ITERATION=${5:-0}  # Default to 0 if not provided
 
 # SLURM parameters
 ACCOUNT="project_465001281"
@@ -24,10 +25,36 @@ NODES=1
 CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_flash.sif"
 PROJECT_DIR="/project/project_465001281/llm-gpt-neox"
 
-# Iterate through each checkpoint folder in the root checkpoint directory
-for CKPT_DIR in $(ls -d "$ROOT_CKPT_DIR"/global_step* 2>/dev/null | sort -V); do
+# Log script start
+echo "[INFO] Starting checkpoint evaluation."
+echo "[INFO] Checking for available checkpoints in: $ROOT_CKPT_DIR"
+
+# Detect all checkpoints
+CHECKPOINTS=($(ls -d "$ROOT_CKPT_DIR"/global_step* 2>/dev/null | sort -V))
+
+if [ ${#CHECKPOINTS[@]} -eq 0 ]; then
+    echo "[ERROR] No checkpoints found in $ROOT_CKPT_DIR. Exiting."
+    exit 1
+fi
+
+# Print detected checkpoints
+echo "[INFO] Detected checkpoints:"
+for CKPT in "${CHECKPOINTS[@]}"; do
+    echo "       - $CKPT"
+done
+echo ""
+
+# Iterate through each checkpoint
+for CKPT_DIR in "${CHECKPOINTS[@]}"; do
     # Extract iteration number
     ITERATION=$(basename "$CKPT_DIR" | sed 's/global_step//')
+
+    # Log whether the checkpoint is being evaluated or skipped
+    if [ "$ITERATION" -lt "$START_ITERATION" ]; then
+        echo "[SKIP] Skipping global_step$ITERATION (below threshold $START_ITERATION)."
+        continue
+    fi
+    echo "[RUN] Evaluating global_step$ITERATION..."
 
     # Define output CSV file
     OUTPUT_CSV="$ROOT_CKPT_DIR/$ITERATION.csv"
@@ -51,4 +78,5 @@ done
 # Wait for all background srun jobs to finish
 wait
 
-echo "All checkpoint evaluations submitted."
+# Log script completion
+echo "[INFO] All checkpoint evaluations submitted."
