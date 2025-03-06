@@ -37,6 +37,7 @@ class AnnealingLR(object):
         use_checkpoint_lr_scheduler=True,
         override_lr_scheduler=False,
         use_mup=False,
+        neox_args=None,
     ):
 
         # Class values.
@@ -51,12 +52,16 @@ class AnnealingLR(object):
         self.override_lr_scheduler = override_lr_scheduler
         self.use_checkpoint_lr_scheduler = use_checkpoint_lr_scheduler
         self.use_mup = use_mup
+        self.neox_args = neox_args
         if self.override_lr_scheduler:
             assert not self.use_checkpoint_lr_scheduler, (
                 "both override and " "use-checkpoint are set."
             )
         # Set the learning rate
+        # FIXME: tbf I have no idea if this helps at all
+        self.unset = False # dont hack the iterations on init
         self.step(self.num_iters)
+        self.unset = True
 
         print_rank_0("> learning rate decay style: {}".format(self.decay_style))
 
@@ -65,8 +70,23 @@ class AnnealingLR(object):
         https://openreview.net/pdf?id=BJYwwY9ll pg. 4"""
 
         num_iters_ = self.num_iters
-        # Warmup.
-        if self.warmup_iter > 0 and self.num_iters <= self.warmup_iter:
+        print_rank_0("--------- LR schedule ---------")
+        print_rank_0("------- > num_iters: {}".format(num_iters_))
+        # FIXME: despite resetting iterations when loading from ckpt, this class somehow still sees the unreset value
+        # dirty reset the iterations
+        if self.neox_args and self.warmup_iter > 0 and self.unset:
+            if self.neox_args.iteration_offset:
+                num_iters_ = num_iters_ - self.neox_args.iteration_offset
+                assert(num_iters_ > 0)
+
+        print_rank_0("--------- LR schedule ---------")
+        print_rank_0("------- > num_iters (faked): {}".format(num_iters_))
+        print_rank_0("------- > warmup_iter: {}".format(self.warmup_iter))
+        print_rank_0("------- > start_lr: {}".format(self.start_lr))
+
+        # FIXME: changed comparison from self.num_iters to num_iters_ , not entirely sure why its wasnt like that
+        #  from start
+        if self.warmup_iter > 0 and num_iters_ <= self.warmup_iter:
             return float(self.start_lr) * num_iters_ / self.warmup_iter
 
         num_iters_ = num_iters_ - self.warmup_iter
