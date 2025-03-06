@@ -11,10 +11,12 @@ ROOT_CKPT_DIR=$1
 CONFIG_FILE=$2
 TEST_FOLDER=$3
 TMP_PATH=$4
-START_ITERATION=${5:-0}  # Default to 0 if not provided
+START_ITERATION=0  # Default: process all checkpoints
 
-# Convert START_ITERATION to an integer
-START_ITERATION=$((START_ITERATION + 0))
+# If start_iteration argument is provided, convert it to an integer
+if [ -n "$5" ]; then
+    START_ITERATION=$((10#$5))  # Ensure it handles leading zeros correctly
+fi
 
 # SLURM parameters
 ACCOUNT="project_465001281"
@@ -31,6 +33,7 @@ PROJECT_DIR="/project/project_465001281/llm-gpt-neox"
 # Log script start
 echo "[INFO] Starting checkpoint evaluation."
 echo "[INFO] Checking for available checkpoints in: $ROOT_CKPT_DIR"
+echo "[INFO] Only evaluating checkpoints from iteration $START_ITERATION onwards."
 
 # Detect all checkpoints
 CHECKPOINTS=($(ls -d "$ROOT_CKPT_DIR"/global_step* 2>/dev/null | sort -V))
@@ -51,7 +54,7 @@ echo ""
 for CKPT_DIR in "${CHECKPOINTS[@]}"; do
     # Extract iteration number and convert to an integer
     ITERATION=$(basename "$CKPT_DIR" | sed 's/global_step//')
-    ITERATION=$((ITERATION + 0))  # Force numeric conversion
+    ITERATION=$((10#$ITERATION))  # Convert to integer correctly
 
     # Log whether the checkpoint is being evaluated or skipped
     if [ "$ITERATION" -lt "$START_ITERATION" ]; then
