@@ -372,8 +372,8 @@ def training_log(
         if neox_args.iteration_offset:
 
             log_string += " iteration {:8d} [{:8d}]/{:8d} [{:8d}] |".format(
-                iteration, iteration + neox_args.iter_offset,
-                neox_args.train_iters, neox_args.train_iters + neox_args.iter_offset
+                iteration, iteration + neox_args.iteration_offset,
+                neox_args.train_iters, neox_args.train_iters + neox_args.iteration_offset
             )
 
         else:
