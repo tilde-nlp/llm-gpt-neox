@@ -536,10 +536,11 @@ def build_train_valid_test_data_loaders(neox_args):
         # Number of train/valid/test samples.
         if neox_args.train_iters is not None:
             train_iters = neox_args.train_iters
-            print_rank_0("Building dataset for a maximum of {} training iterations.".format(train_iters))
+            print_rank_0("Building train dataset for a maximum of {} training iterations.".format(train_iters))
             eval_iters = (
                 train_iters // neox_args.eval_interval + 1
             ) * neox_args.eval_iters
+            print_rank_0("Building validation dataset for a maximum of {} validation iterations.".format(eval_iters))
             test_iters = neox_args.eval_iters
             train_val_test_num_samples = [
                 train_iters * neox_args.train_batch_size,
@@ -696,14 +697,25 @@ def shift_and_wrap_data_loaders(neox_args, data_loaders, loop=True):
 
     # Shift the start iterations.
     if train_dataloader is not None:
-        train_dataloader.batch_sampler.start_iter = (
-            neox_args.iteration * neox_args.gradient_accumulation_steps
-        ) % len(train_dataloader)
+        # FIXME: does it really do what it claims to do?
+        if neox_args.batch_iteration_offset:
+            train_dataloader.batch_sampler.start_iter = ((
+                neox_args.iteration + neox_args.batch_iteration_offset) * neox_args.gradient_accumulation_steps
+            ) % len(train_dataloader)
+
+        else:
+            train_dataloader.batch_sampler.start_iter = (
+                neox_args.iteration * neox_args.gradient_accumulation_steps
+            ) % len(train_dataloader)
+
         print_rank_0(
             "setting training data start iteration to {}".format(
                 train_dataloader.batch_sampler.start_iter
             )
         )
+        print_rank_0("Batch iteration offset: {}".format(neox_args.batch_iteration_offset))
+        print_rank_0("Skipped batches (with gradient accumulation taken into account) : {}".format(neox_args.iteration * neox_args.gradient_accumulation_steps))
+
     if valid_dataloader is not None:
         start_iter_val = (
             (neox_args.iteration * neox_args.gradient_accumulation_steps)
