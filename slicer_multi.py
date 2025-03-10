@@ -155,6 +155,9 @@ def main(args):
             assert(len(slice_names[key]) == len(token_counts[key]))
 
     # some meme sanity
+    print(list(state.keys()))
+    print(list(sorted(token_counts.keys())))
+    print(list(sorted(state.keys())))
     assert (sorted(list(token_counts.keys())) == sorted(list(state.keys())))
 
     # loop trough languages and slice if possible
