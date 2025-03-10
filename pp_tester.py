@@ -333,7 +333,8 @@ def main():
     names, datasets = load_datasets(args.test_folder)
 
     print("Loading tokenizer from %s " % config["vocab_file"])
-    tokenizer = LlamaTokenizer.from_pretrained(config["vocab_file"])
+    print(" ---------- REMOVING BOS ------------ ")
+    tokenizer = LlamaTokenizer.from_pretrained(config["vocab_file"], add_bos_token=False)
     print("Finished loading tokenizer.")
 
     # Tokenize data.
