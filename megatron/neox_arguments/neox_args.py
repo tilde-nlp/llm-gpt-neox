@@ -853,6 +853,8 @@ class NeoXArgsOther(NeoXArgsTemplate):
     user script to be run
     """
 
+    # IMPORTANT: under no circumstance pass this argument. Completely untested, likely messes with our custom args.
+
     iteration: int = None
     """
     Set during training
@@ -863,6 +865,13 @@ class NeoXArgsOther(NeoXArgsTemplate):
     iteration_offset: int = None
     """
     This should be set to the iteration value of the loaded checkpoint
+    """
+
+    # TODO: this should not interfere with lr scheduling and any other iteration based stuff
+    # IMPORTANT: only applies to train iterator. Other use cases are beyond unlikely.
+    batch_iteration_offset: int = None
+    """
+    Tells how many batches to skip from the loaded checkpoint
     """
 
     do_train: bool = None
