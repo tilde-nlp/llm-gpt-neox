@@ -320,7 +320,8 @@ def main():
     ckpt = args.ckpt_path
 
     # create a subfolder for the specific ckpt
-    os.makedirs(os.path.join(tmp_path, os.path.basename(ckpt)), exist_ok=True)
+    tmp_path = os.path.join(tmp_path, os.path.basename(ckpt))
+    os.makedirs(tmp_path, exist_ok=True)
 
     print(" ----- New checkpoint detected: %s" % ckpt)
 
