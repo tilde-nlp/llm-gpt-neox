@@ -1255,13 +1255,24 @@ class ParallelTransformerLayer(nn.Module):
                     # No dropout either
                     assert mlp_bias is None
                     output = mlp_output + attention_output
-                else:
+
+                # IMPORTANT: Martin here, ghetto fix applied
+                # else:
+                #     output = bias_dropout_fn(
+                #         mlp_output,
+                #         bias=mlp_bias.expand_as(attention_output),
+                #         residual=attention_output,
+                #         prob=self.hidden_dropout,
+                #     )
+                elif mlp_bias is not None:
                     output = bias_dropout_fn(
-                        mlp_output,
-                        bias=mlp_bias.expand_as(attention_output),
-                        residual=attention_output,
-                        prob=self.hidden_dropout,
-                    )
+                            mlp_output,
+                            bias=mlp_bias.expand_as(attention_output),
+                            residual=attention_output,
+                            prob=self.hidden_dropout,
+                        )
+                else:
+                    output = mlp_output
 
         return output, moe_loss
 
