@@ -439,9 +439,9 @@ def main():
             # Load model.
             with init_empty_weights():
                 if args.architecture.upper() == "NEOX":
-                    model = GPTNeoXForCausalLM.from_pretrained(args.tmp_path, device_map="auto")
+                    model = GPTNeoXForCausalLM.from_pretrained(tmp_path, device_map="auto")
                 elif args.architecture.upper() == "LLAMA":
-                    model = LlamaForCausalLM.from_pretrained(args.tmp_path, device_map={"": "cuda:0"})
+                    model = LlamaForCausalLM.from_pretrained(tmp_path, device_map={"": "cuda:0"})
                 else:
                     raise ValueError(f"Huggingface --architecture {args.architecture} not recognized.")
             print(model.hf_device_map)
