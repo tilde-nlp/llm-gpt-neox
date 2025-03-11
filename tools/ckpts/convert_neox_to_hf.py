@@ -1,18 +1,3 @@
-# Copyright (c) 2023, EleutherAI
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-#Doing magic so prints flush immediately.
 import builtins
 original_print = builtins.print
 def custom_print(*args, **kwargs):
@@ -118,11 +103,13 @@ MODEL_KEYS = {
     "llama": {
         "new": {
             "COLUMN_PARALLEL_LINEAR_KEYS": {
-                "mlp.linear1.weight": ["mlp.up_proj.weight", "mlp.gate_proj.weight"]
+                "mlp.linear1.weight": ["mlp.up_proj.weight", "mlp.gate_proj.weight"],
+                "mlp.linear1.bias": ["mlp.up_proj.bias", "mlp.gate_proj.bias"]
             },
             "ROW_PARALLEL_LINEAR_KEYS": {
                 "attention.dense.weight": "self_attn.o_proj.weight",
                 "mlp.linear2.weight": "mlp.down_proj.weight",
+                "mlp.linear2.bias": "mlp.down_proj.bias"
             },
             "ROW_PARALLEL_BIAS_KEYS": {},  # No biases in RowParallelLinear layers
             "NORM_KEYS": {
@@ -308,6 +295,7 @@ def create_config(neox_config, architecture="neox", is_rm=False, pad_token_id=-1
                 "bos_token_id": tokenizer.eod,
                 "eos_token_id": tokenizer.eod,
                 "rope_theta": get_key(neox_config, "rotary-emb-base", 10000.0),
+                "mlp_bias": get_key(neox_config, "use-bias-in-mlp", True),
             }
         )
         #This next if is added by ingus.
@@ -527,7 +515,8 @@ def convert(
           from transformers import GPTNeoXForCausalLM
           hf_model = GPTNeoXForCausalLM(hf_config)
         else:
-          hf_model = AutoModelForCausalLM.from_config(hf_config)
+          from transformers import LlamaForCausalLM
+          hf_model = LlamaForCausalLM(hf_config)
     else:
         hf_model = AutoModelForSequenceClassification.from_config(hf_config)
 
@@ -535,6 +524,9 @@ def convert(
         hf_transformer = hf_model.gpt_neox
     else:
         hf_transformer = hf_model.model
+
+    print(hf_model.config)
+    print(hf_model)
 
     if precision == "auto":
         print("Auto-detecting precision to save model into...")
@@ -554,6 +546,8 @@ def convert(
         else:
             print("Doing fp32.")
             hf_model.to(torch.float)
+
+        print(hf_model)
 
         #if fp16: Ingus - Disable old code out.
         if False:
@@ -650,11 +644,21 @@ def convert(
         # + 2 bc of embed layer and a dummy _pre_transformer_block
         state_dict = {}
         for key, hf_key in ARCH["ROW_PARALLEL_LINEAR_KEYS"].items():
+            if key == "mlp.linear2.bias" and not hf_config.mlp_bias:
+                print("skipping", key)
+                continue
+
+            #Woodoo
+            if key == "mlp.linear2.bias":
+              state_dict[hf_key] = sum(get_state(loaded_tp_ranks, key, layer_idx=layer_i + 2, sequential=sequential))
+              continue
+            else:
+              dim = 1
             state_dict[hf_key] = torch.cat(
                 get_state(
                     loaded_tp_ranks, key, layer_idx=layer_i + 2, sequential=sequential
                 ),
-                dim=1,
+                dim=dim,
             )
 
         # average layernorm stats over mp ranks
@@ -667,6 +671,10 @@ def convert(
 
         # LinearWithTPMerge
         for key, hf_key in ARCH["COLUMN_PARALLEL_LINEAR_KEYS"].items():
+            if key == "mlp.linear1.bias" and not hf_config.mlp_bias:
+                print("skipping", key)
+                continue
+
             if type(hf_key) == list:
                 # Llama magic - split the weight into two parts for the gate and up proj
                 states = [
@@ -723,6 +731,7 @@ def convert(
                 )
             )
         # load state_dict into layer
+        print(state_dict)
         hf_layer.load_state_dict(state_dict)
 
     if not sequential:
