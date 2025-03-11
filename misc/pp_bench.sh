@@ -27,7 +27,7 @@ CPUS_PER_TASK=7
 MEM_PER_GPU="60G"
 TIME="01:00:00"
 NODES=1
-CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_flash.sif"
+CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_inference.sif"
 PROJECT_DIR="/project/project_465001281/llm-gpt-neox"
 
 # Log script start

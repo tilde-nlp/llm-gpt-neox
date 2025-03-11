@@ -65,10 +65,10 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--log-file",
+        "--log-file-path",
         type=str,
         required=True,
-        help="Path to .csv file to log to. Appends to existing, if it already exists."
+        help="Path to dir where to save the .csv output files. A new fill will be created for each ckpt."
     )
 
     parser.add_argument(
@@ -414,10 +414,6 @@ def main():
             datasets_.append(dataset_)
         datasets = datasets_
 
-        # Open log file.
-        log_file = open_log_file(args.log_file, names)
-        log_file_writer = csv.writer(log_file)
-
         # Look for untested checkpoints.
         untested_checkpoints = get_untested_checkpoints(cp_path)
         print("Found the following untested checkpoints: %s" % untested_checkpoints)
@@ -429,6 +425,10 @@ def main():
             # create a subfolder for the specific ckpt
             tmp_path = os.path.join(tmp_path, os.path.basename(ckpt))
             os.makedirs(tmp_path, exist_ok=True)
+
+            # Open log file.
+            log_file = open_log_file(os.path.join(args.log_file_path, os.path.basename(ckpt)), names)
+            log_file_writer = csv.writer(log_file)
 
             ckpt = os.path.join(cp_path, ckpt)
             print(" ----- New checkpoint detected: %s" % ckpt)

@@ -7,7 +7,7 @@
 #SBATCH --gpus-per-node=mi250:1
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=7
-#SBATCH --mem=0
+#SBATCH --mem=60G
 #SBATCH --time=48:00:00
 #SBATCH --hint=nomultithread
 #SBATCH --job-name=pp_bench
@@ -22,9 +22,6 @@
 
 set -euo pipefail
 
-NEOX_DIR="/project/project_465001281/IP/llm-gpt-neox"
-
-
 export CC=gcc-12
 export CXX=g++-12
 
@@ -36,7 +33,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 #Setting up torch distributed env parameters.
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
-export MASTER_PORT=9835
+export MASTER_PORT=1337
 export WORLD_SIZE=$SLURM_NTASKS
 
 #Don't fully understand.
@@ -80,7 +77,7 @@ fi
 
 #Generating a file so deepy.py knows the available resources.
 #(deepy.py is the gpt-neox launcher script.)
-GPUS_PER_NODE=8
+GPUS_PER_NODE=1
 mkdir -p ./hostfiles
 hostfile=./hostfiles/hosts_$SLURM_JOBID
 # loop over the node names
@@ -91,14 +88,30 @@ do
 done
 export DLTS_HOSTFILE=./hostfiles/hosts_$SLURM_JOBID
 
+NEOX_DIR="/project/project_465001281/IP/llm-gpt-neox"
+
+# IMPORTANT: change these
+CONFIG_FILE="$NEOX_DIR/launch_scripts/full_pipe_test_merged_fix_nobias/warmup/30_SOTA_962M_warmup.yml"
+OUTPUT_CSV_FOLDER="/scratch/project_465001281/MK/checkpoints/full_pipe_test_1B_merged_fix_nobias"
+
+# IMPORTANT: most likely dont change these
+TEST_FOLDER="/scratch/project_465001281/MK/data"
+TMP_PATH="/scratch/project_465001281/MK/tmp"
+CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_inference.sif"
+
+
 #This command will tell deepy.py to run training with the config 00_example.yml.
-CMD="pp_tester_single.py
---tmp-path '$TMP_PATH'
---config '$CONFIG_FILE'
---architecture llama
---test-folder '$TEST_FOLDER'
---log-file '$OUTPUT_CSV'
---ckpt_path '$CKPT_DIR'
---tmp-path '$TMP_PATH'"
+CMD="python pp_tester_sophisticated.py \
+--config $CONFIG_FILE \
+--architecture llama \
+--test-folder $TEST_FOLDER \
+--log-file $OUTPUT_CSV_FOLDER \
+--tmp-path $TMP_PATH \
+--neox-path $NEOX_DIR
+"
+
+srun singularity exec "$CONTAINER_PATH" \
+  bash -c "cd $NEOX_DIR; \$WITH_CONDA; $CMD"
+
 
 $CMD
