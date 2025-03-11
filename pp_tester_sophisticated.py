@@ -5,9 +5,8 @@ It sniffs for new checkpoint, evaluates them, and logs the results.
 Script assumes you're using a sentencepiece tokenizer model.
 """
 
-# FIXME: give path to the real repo
-GPT_NEOX_PATH = "/project/project_465001281/llm-gpt-neox"
-
+import fcntl
+import sys
 import yaml
 import argparse
 import time
@@ -18,6 +17,8 @@ import subprocess
 import json
 import csv
 import math
+import random
+import string
 
 from transformers import GPTNeoXForCausalLM, LlamaTokenizer, LlamaForCausalLM
 import torch
@@ -73,8 +74,15 @@ def parse_args():
     parser.add_argument(
         "--tmp-path",
         type=str,
-        default="./tmp/hf_checkpoint/",
+        required=True,
         help="Path to save temporary hf checkpoints to."
+    )
+
+    parser.add_argument(
+        "--neox-path",
+        type=str,
+        required=True,
+        help="Path to llm-gpt-neox folder."
     )
 
     args = parser.parse_args()
@@ -182,7 +190,8 @@ def open_log_file(path: str, names: list[str]):
         return file
 
 
-def convert_checkpoint(step_path: str, output_path: str, config: dict, model_type: str = "Neox") -> None:
+def convert_checkpoint(step_path: str, output_path: str, config: dict, neox_path: str,
+                       model_type: str = "Neox", ) -> None:
     """
     Converts gpt-neox checkpoint to huggingface checkpoint.
 
@@ -193,7 +202,7 @@ def convert_checkpoint(step_path: str, output_path: str, config: dict, model_typ
     """
 
     print("Converting checkpoint.")
-    command = ["python", os.path.join(GPT_NEOX_PATH, "tools/ckpts/convert_neox_to_hf.py")]
+    command = ["python", os.path.join(neox_path, "tools/ckpts/convert_neox_to_hf.py")]
     command += ["--input_dir", step_path]
     command += ["--output_dir", output_path]
 
@@ -317,17 +326,12 @@ def get_config(config_file_path: str) -> dict:
     return config
 
 
-import fcntl
-import sys
-import os
-
-
 def acquire_lock(lock_file_path: str):
     """
     Attempts to acquire an exclusive lock on lock_file_path.
     Exits if the lock is already held.
     """
-    lock_file = open(lock_file_path, "w") # the file on disk does not actually matter, just the reference
+    lock_file = open(lock_file_path, "w")  # the file on disk does not actually matter, just the reference
     try:
         # Try to acquire the lock in non-blocking mode.
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -352,6 +356,20 @@ def release_lock(lock_file, lock_file_path: str):
     print(f"Released lock on {lock_file_path}")
 
 
+def create_temp_subfolder(root_temp_dir):
+    # Generate a unique folder name using processor time, three random letters, and three random digits
+    letters = ''.join(random.choices(string.ascii_lowercase, k=3))  # 3 random lowercase letters
+    numbers = ''.join(random.choices(string.digits, k=3))  # 3 random digits
+    unique_id = f"{int(time.process_time() * 1e6)}_{letters}{numbers}"
+
+    temp_subfolder = os.path.join(root_temp_dir, unique_id)
+
+    # Create the directory if it doesn't exist
+    os.makedirs(temp_subfolder, exist_ok=True)
+
+    return temp_subfolder
+
+
 def main():
     args = parse_args()
     # Snag configs
@@ -367,6 +385,9 @@ def main():
     # Define a fixed lock file in the checkpoint directory.
     lock_file_path = os.path.join(cp_path, "process.lock")
     lock_file = acquire_lock(lock_file_path)
+
+    # get repo
+    GPT_NEOX_PATH = args.neox_path
 
     try:
         # -------------------------------
@@ -398,15 +419,22 @@ def main():
         log_file_writer = csv.writer(log_file)
 
         # Look for untested checkpoints.
-        cp_path = config["save"]
         untested_checkpoints = get_untested_checkpoints(cp_path)
         print("Found the following untested checkpoints: %s" % untested_checkpoints)
         for ckpt in untested_checkpoints:
+
+            # create a unique temp folder in the root temp folder
+            tmp_path = create_temp_subfolder(args.tmp_path)
+
+            # create a subfolder for the specific ckpt
+            tmp_path = os.path.join(tmp_path, os.path.basename(ckpt))
+            os.makedirs(tmp_path, exist_ok=True)
+
             ckpt = os.path.join(cp_path, ckpt)
             print(" ----- New checkpoint detected: %s" % ckpt)
 
             # Convert to Hugging Face checkpoint format.
-            convert_checkpoint(ckpt, args.tmp_path, config, args.architecture)
+            convert_checkpoint(ckpt, tmp_path, config, GPT_NEOX_PATH, args.architecture)
 
             # Load model.
             with init_empty_weights():
@@ -439,7 +467,7 @@ def main():
 
             # Clean up.
             print("Deleting temporary HF checkpoint from %s " % args.tmp_path)
-            shutil.rmtree(args.tmp_path)
+            shutil.rmtree(tmp_path)
             log_latest_tested(cp_path, os.path.basename(ckpt))
         # -------------------------------
     except Exception as e:
