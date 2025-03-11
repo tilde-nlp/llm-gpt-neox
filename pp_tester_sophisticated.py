@@ -427,7 +427,7 @@ def main():
             os.makedirs(tmp_path, exist_ok=True)
 
             # Open log file.
-            log_file = open_log_file(os.path.join(args.log_file_path, os.path.basename(ckpt)), names)
+            log_file = open_log_file(os.path.join(args.log_file_path, os.path.basename(ckpt)) + ".csv", names)
             log_file_writer = csv.writer(log_file)
 
             ckpt = os.path.join(cp_path, ckpt)
