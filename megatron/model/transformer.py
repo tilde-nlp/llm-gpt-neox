@@ -1272,7 +1272,7 @@ class ParallelTransformerLayer(nn.Module):
                             prob=self.hidden_dropout,
                         )
                 else:
-                    output = mlp_output
+                    output = mlp_output + attention_output
 
         return output, moe_loss
 
