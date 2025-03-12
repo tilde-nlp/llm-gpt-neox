@@ -112,6 +112,3 @@ CMD="python pp_tester_sophisticated.py \
 
 srun singularity exec "$CONTAINER_PATH" \
   bash -c "cd $NEOX_DIR; \$WITH_CONDA; $CMD"
-
-
-$CMD
