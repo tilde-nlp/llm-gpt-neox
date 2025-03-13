@@ -1,6 +1,38 @@
 import os
+import sys
 import yaml
 from megatron.data.indexed_dataset_hacked import MMapIndexedDataset, MMapIndexedDatasetBuilder
+
+import logging
+# set logging level
+log_filename = "slicer.log"
+
+# Configure logging to log both to file and console
+logging.basicConfig(
+    level=logging.INFO,  # Set logging level
+    format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+    handlers=[
+        logging.FileHandler(log_filename, mode='w'),  # Log to a file
+        logging.StreamHandler()  # Log to console
+    ]
+)
+
+# checks if all .bin files exist
+def validate_state(state_dict):
+    missing_files = []
+
+    for lang, info in state_dict.items():
+        datapath = info.get("datapath", "")
+        if not os.path.exists(datapath):  # Check if the file exists
+            missing_files.append((lang, datapath))
+
+    if missing_files:
+        logging.error("The following datapaths do not exist:")
+        for lang, path in missing_files:
+            logging.error(f" - {lang}: {path}")
+        sys.exit(1)  # Exit with error code 1
+
+    logging.info("Successfully validated state")
 
 
 # load idx/bin into megatron IndexedDataset class
@@ -36,6 +68,7 @@ def write_state(state, path_to_og_state):
         yaml.dump(state, yaml_file, default_flow_style=False, sort_keys=False)
 
 
+# yes this is just a copy of the function below
 # load yaml containing token amounts
 def load_token_counts(path_to_tokens):
     # Load YAML file
@@ -45,6 +78,7 @@ def load_token_counts(path_to_tokens):
     return token_counts
 
 
+# yes this is just a copy of the function above
 # load yaml containing slice names
 def load_slice_names(path_to_slices):
     # Load YAML file
@@ -94,9 +128,10 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
         # calc length
         temp_len = temp_tokens.size
 
+        current_tokens += temp_len
+
         # if we haven't exceeded the desired token count yet, add this document to the slice
-        if current_tokens + temp_len <= token_count:
-            current_tokens += temp_len
+        if current_tokens <= token_count:
 
             # add to slice
             indexed_dset_builder.add_item(temp_tokens)  # this already writes to disk
@@ -104,32 +139,31 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
 
         else:
 
+            # finalize the slice, create idx file for the bin
+            indexed_dset_builder.finalize(path_to_out_bin.replace(".bin", ".idx"))
+
             # some logging
             logging.info("Sampled %s out of %s [%s%s] tokens" % (
                 current_tokens, token_count, round(100 * current_tokens / token_count, 2), "%"))
 
-            # finalize the slice, create idx file for the bin
-            indexed_dset_builder.finalize(path_to_out_bin.replace(".bin", ".idx"))
-
             logging.info("Sliced dataset written to %s[.bin/.idx]" % path_to_out_bin.replace(".bin", ""))
 
-            # current index cannot be consumed and is returned as future offset
-            logging.info("Index offset for next slice set to %s" % current_idx)
-            return current_idx
+            # current index is consumed (we are always oversampling) and future offset is incremented by 1
+            logging.info("Index offset for next slice set to %s" % current_idx + 1)
+            return current_idx + 1
 
         # increment index
         current_idx += 1
 
-        # TODO: allow wrapping around?
+        # IMPORTANT: allowed wrapping around
+        if current_idx >= max_idx:
+            # some logging
+            logging.info("Ran out of documents to sample from ...")
+            logging.info("Sampled so far: %s out of %s [%s%s] tokens" % (
+                current_tokens, token_count, round(100 * current_tokens / token_count, 2), "%"))
+            logging.info("Re-setting index to 0 and wrapping around ...")
 
-    # some logging
-    logging.info("Ran out of documents to sample from")
-    logging.info("Sampled %s out of %s [%s%s] tokens" % (
-        current_tokens, token_count, round(100 * current_tokens / token_count, 2), "%"))
-
-    # cycled through all unsampled documents, but still not enough tokens
-    # finalize what we currently have
-    indexed_dset_builder.finalize(path_to_out_bin.replace(".bin", ".idx"))
+            current_idx = 0
 
     # some more logging
     logging.info("Sliced dataset written to %s(.bin/.idx)" % path_to_out_bin.replace(".bin", ""))
@@ -140,24 +174,23 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
 def main(args):
     # load the state
     state = load_state(args.state)
+    validate_state(state)
 
     # load the token counts
     token_counts = load_token_counts(args.tokens)
 
     # load slice names
-    slice_names = {}
-    if args.slice:
-        logging.info("Slice YAML file has been provided. Loading")
-        slice_names = load_slice_names(args.slice)
-        logging.info("Slices: %s" % slice_names)
-        assert (sorted(slice_names.keys()) == sorted(token_counts.keys()))
-        for key in slice_names.keys():
-            assert(len(slice_names[key]) == len(token_counts[key]))
+    logging.info("Slice YAML file has been provided. Loading")
+    slice_names = load_slice_names(args.slice)
+    logging.info("Slices: %s" % slice_names)
+    assert (sorted(slice_names.keys()) == sorted(token_counts.keys()))
+    for key in slice_names.keys():
+        assert (len(slice_names[key]) == len(token_counts[key]))
 
     # some meme sanity
-    print(list(state.keys()))
-    print(list(sorted(token_counts.keys())))
-    print(list(sorted(state.keys())))
+    logging.info(list(state.keys()))
+    logging.info(list(sorted(token_counts.keys())))
+    logging.info(list(sorted(state.keys())))
     assert (sorted(list(token_counts.keys())) == sorted(list(state.keys())))
 
     # loop trough languages and slice if possible
@@ -165,13 +198,10 @@ def main(args):
 
     for lang in token_counts.keys():
 
-        # skip languages with not requested tokens
+        # skip languages with no requested tokens
+        assert len(token_counts[lang]) > 0
 
-        if token_counts[lang] == 0:
-            logging.info("--- Skipping %s [%s tokens requested]" % (lang, token_counts[lang]))
-            continue
-
-        logging.info("--- Processing %s [%s tokens requested]" % (lang, token_counts[lang]))
+        logging.info("--- Processing %s [%s tokens requested]" % (lang, sum(token_counts[lang])))
         # get the source indexed dataset for this lang
         path_to_inp_bin = state[lang]["datapath"]
         indexed_dataset = load_indexed_dset(path_to_inp_bin)  # load this once
@@ -186,11 +216,16 @@ def main(args):
             slice = int(slice)
 
             # grab corresponding slice name if it exists
-            slice_folder = "/" + slice_names.get(lang, (n-1)*[""])[n]
-            os.makedirs(args.out_dir + slice_folder, exist_ok=True) # a bit hacky and redundant
+            slice_folder = "/" + slice_names[lang][n] + "_" + str(n)
+            os.makedirs(args.out_dir + slice_folder, exist_ok=True)  # a bit hacky and redundant
 
             # slice the dataset, write output to input_filename_slice{n}_{idx_offset}_{token_count}.bin/.idx
-            logging.info("Slicing %s" % path_to_inp_bin)
+            if slice == 0:
+                logging.info(
+                    f"Skipping {path_to_inp_bin}, phase {slice_names[lang][n]}, requested {slice} tokens")
+                continue
+
+            logging.info(f"Slicing {path_to_inp_bin}, phase {slice_names[lang][n]} for {slice} tokens")
             new_idx_offset = slice_bin(idx_offset, slice, indexed_dataset, args.out_dir + slice_folder + "/" +
                                        os.path.basename(
                                            path_to_inp_bin.replace(".bin", f"_slice{n}_{idx_offset}_{slice}.bin")))
@@ -201,9 +236,9 @@ def main(args):
             # set the next idx_offset as the current new
             idx_offset = new_idx_offset
 
-            # TODO: allow wrapping?
-            if idx_offset == 0:
-                break
+            # Important: allowed wrapping
+            # if idx_offset == 0:
+            #     break
 
     # write the new state
     write_state(state, args.state)
@@ -213,7 +248,6 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
-    import logging
 
     state_yaml_example = """\
     Example state YAML format:
@@ -247,15 +281,11 @@ if __name__ == "__main__":
                         help=f"Path to the YAML tokens file. \n\n{tokens_yaml_example}")
     parser.add_argument("--state", type=str, required=True,
                         help=f"Path to the YAML state file. \n\n{state_yaml_example}")
-    parser.add_argument("--slice", type=str, required=False,
+    parser.add_argument("--slice", type=str, required=True,
                         help=f"Path to the YAML slice names file. \n\n{slices_yaml_example}")
     parser.add_argument("--out_dir", type=str, required=False, default=".", help=f"Path to output directory")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose mode")
 
     args = parser.parse_args()
-
-    # set logging level
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     # Call main with parsed arguments
     main(args)
