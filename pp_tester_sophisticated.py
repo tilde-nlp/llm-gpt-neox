@@ -420,10 +420,10 @@ def main():
         for ckpt in untested_checkpoints:
 
             # create a unique temp folder in the root temp folder
-            tmp_path = create_temp_subfolder(args.tmp_path)
+            tmp_path_root = create_temp_subfolder(args.tmp_path)
 
             # create a subfolder for the specific ckpt
-            tmp_path = os.path.join(tmp_path, os.path.basename(ckpt))
+            tmp_path = os.path.join(tmp_path_root, os.path.basename(ckpt))
             os.makedirs(tmp_path, exist_ok=True)
 
             # Open log file.
@@ -467,7 +467,7 @@ def main():
 
             # Clean up.
             print("Deleting temporary HF checkpoint from %s " % args.tmp_path)
-            shutil.rmtree(tmp_path)
+            shutil.rmtree(tmp_path_root)
             log_latest_tested(cp_path, os.path.basename(ckpt))
         # -------------------------------
     except Exception as e:

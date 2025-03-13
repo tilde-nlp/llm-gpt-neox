@@ -322,13 +322,13 @@ def main():
     log_file_writer = csv.writer(log_file)
 
     # create a unique temp folder in the root temp folder
-    tmp_path = create_temp_subfolder(args.tmp_path)
+    tmp_path_root = create_temp_subfolder(args.tmp_path)
 
     # Look for untested checkpoints
     ckpt = args.ckpt_path
 
     # create a subfolder for the specific ckpt
-    tmp_path = os.path.join(tmp_path, os.path.basename(ckpt))
+    tmp_path = os.path.join(tmp_path_root, os.path.basename(ckpt))
     os.makedirs(tmp_path, exist_ok=True)
 
     print(" ----- New checkpoint detected: %s" % ckpt)
@@ -369,7 +369,7 @@ def main():
 
     # Clean up.
     print("Deleting temporary HF checkpoint from %s " % tmp_path)
-    shutil.rmtree(tmp_path)
+    shutil.rmtree(tmp_path_root)
 
 
 if __name__ == "__main__":
