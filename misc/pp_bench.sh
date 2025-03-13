@@ -28,7 +28,7 @@ MEM_PER_GPU="60G"
 TIME="01:00:00"
 NODES=1
 CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_inference.sif"
-PROJECT_DIR="/project/project_465001281/llm-gpt-neox"
+PROJECT_DIR="/project/project_465001281/IP/llm-gpt-neox"
 
 # Log script start
 echo "[INFO] Starting checkpoint evaluation."
@@ -76,7 +76,7 @@ for CKPT_DIR in "${CHECKPOINTS[@]}"; do
          --time="$TIME" \
          --nodes="$NODES" \
          singularity exec "$CONTAINER_PATH" \
-         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR' --tmp-path '$TMP_PATH'" &
+         bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python pp_tester_single.py --config '$CONFIG_FILE' --architecture llama --test-folder '$TEST_FOLDER' --log-file '$OUTPUT_CSV' --ckpt_path '$CKPT_DIR' --tmp-path '$TMP_PATH' --neox-path '$PROJECT_DIR'" &
 
     # Brief pause to prevent overwhelming the system
     # sleep 1

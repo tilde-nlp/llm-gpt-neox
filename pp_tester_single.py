@@ -4,8 +4,6 @@ Doesnt sniff, just benches a single ckpt
 Script assumes you're using a sentencepiece tokenizer model.
 """
 
-GPT_NEOX_PATH = "/project/project_465001281/llm-gpt-neox"
-
 import yaml
 import argparse
 import os
@@ -81,6 +79,13 @@ def parse_args():
         type=str,
         required=True,
         help="Path to 'root' temporary folder for hf checkpoints."
+    )
+
+    parser.add_argument(
+        "--neox-path",
+        type=str,
+        required=True,
+        help="Path to llm-gpt-neox folder."
     )
 
     args = parser.parse_args()
@@ -188,7 +193,7 @@ def open_log_file(path: str, names: list[str]):
         return file
 
 
-def convert_checkpoint(step_path: str, output_path: str, config: dict, model_type: str = "Neox") -> None:
+def convert_checkpoint(step_path: str, output_path: str, config: dict, GPT_NEOX_PATH: str, model_type: str = "Neox") -> None:
     """
     Converts gpt-neox checkpoint to huggingface checkpoint.
 
@@ -285,6 +290,9 @@ def main():
     # Validate tokenizer
     pass
 
+    # get repo
+    GPT_NEOX_PATH = args.neox_path
+
     names, datasets = load_datasets(args.test_folder)
 
     print("Loading tokenizer from %s " % config["vocab_file"])
@@ -326,7 +334,7 @@ def main():
     print(" ----- New checkpoint detected: %s" % ckpt)
 
     # Convert to hugginface checkpoint format.
-    convert_checkpoint(ckpt, tmp_path, config, args.architecture)
+    convert_checkpoint(ckpt, tmp_path, config, GPT_NEOX_PATH, args.architecture)
 
     # Load model.
     with init_empty_weights():
