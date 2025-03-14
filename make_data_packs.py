@@ -386,11 +386,15 @@ def main(args):
     for key in token_counts:
 
         # sanity
+        if not state.get(key, False):
+            logging.info(f"Key not found: {key} . Skipping")
+            continue
         t_datapath = state[key]["datapath"]
-        if os.path.exists(t_datapath):  # ✅ Checks if the file or directory exists
-            logging.info(f"✅ File exists: {t_datapath}")
+
+        if os.path.exists(t_datapath):  # Checks if the file or directory exists
+            logging.info(f"File exists: {t_datapath}")
         else:
-            logging.info(f"❌ File NOT found: {t_datapath} . Skipping")
+            logging.info(f"File NOT found: {t_datapath} . Skipping")
             continue
 
         # n += 1
