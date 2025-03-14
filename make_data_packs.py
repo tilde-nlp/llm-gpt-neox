@@ -372,16 +372,16 @@ def main(args):
 
     sanity_check(slices, token_counts)
 
-    n = 0
+    # n = 0
     processes = []
 
     state = load_state(path_to_first_state)
 
     for key in token_counts:
 
-        n += 1
-        if n == 3:
-            break
+        # n += 1
+        # if n == 3:
+        #     break
 
         neoxpath = "/project/project_465001281/IP/llm-gpt-neox"
 
