@@ -255,7 +255,7 @@ def main(args):
     # determine remaining number of tokens
     remaining_U3_tokens = U3_sum - cool_down_phase_tokens
     assert remaining_U3_tokens > 0
-    logging.info(f"remaining U1 tokens: {remaining_U3_tokens} [{100 * remaining_U3_tokens / train_sum:.2f} %]")
+    logging.info(f"remaining U3 tokens: {remaining_U3_tokens} [{100 * remaining_U3_tokens / train_sum:.2f} %]")
     # determine how many slices
     slices = int(remaining_U3_tokens // max_tokens_per_pack) + 1
     logging.info("U3 slices: {}".format(slices))
@@ -286,7 +286,7 @@ def main(args):
     logging.info(f"Slicing U3 cooldown ({cd_phase} %) ...")
     # determine remaining number of tokens
     remaining_U3_cd_tokens = cool_down_phase_tokens
-    logging.info(f"remaining U1 tokens: {remaining_U3_cd_tokens} [{100 * remaining_U3_cd_tokens / train_sum:.2f} %]")
+    logging.info(f"remaining U3 cd tokens: {remaining_U3_cd_tokens} [{100 * remaining_U3_cd_tokens / train_sum:.2f} %]")
     # determine how many slices
     slices = int(remaining_U3_cd_tokens // max_tokens_per_pack) + 1
     logging.info("U3 cooldown slices: {}".format(slices))
