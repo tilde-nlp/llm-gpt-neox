@@ -84,8 +84,8 @@
     },
 
   #Batch settings
-  "train_micro_batch_size_per_gpu": 4,
-  "train_batch_size": 512,
+  "train_micro_batch_size_per_gpu": 3,
+  "train_batch_size": 576,
   "gradient_accumulation_steps": 1,
 
   "train_iters": 30000, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 30 000)
