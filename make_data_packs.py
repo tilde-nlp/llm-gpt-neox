@@ -394,7 +394,7 @@ def main(args):
         local_state_yaml = {}
         local_state_yaml[key] = state[key]
 
-        local_out_dir = out_dir + "/" + key
+        local_out_dir = out_dir + "/tmp/" + key
         os.makedirs(local_out_dir, exist_ok=True)
 
         local_token_file = local_out_dir + f"/tokens.yaml"
