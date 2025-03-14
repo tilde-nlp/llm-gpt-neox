@@ -381,7 +381,7 @@ def main(args):
     processes = []
 
     state = load_state(path_to_first_state)
-    print(token_counts.keys())
+    logging.info(f"Stuff to slice: {token_counts.keys()}")
 
     for key in token_counts:
 
