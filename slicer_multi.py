@@ -139,6 +139,10 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
 
         else:
 
+            # add to slice
+            indexed_dset_builder.add_item(temp_tokens)  # this already writes to disk
+            indexed_dset_builder.end_document()  # each sequence is a separate document
+
             # finalize the slice, create idx file for the bin
             indexed_dset_builder.finalize(path_to_out_bin.replace(".bin", ".idx"))
 
