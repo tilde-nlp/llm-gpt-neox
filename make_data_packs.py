@@ -85,7 +85,7 @@ def main(args):
 
     out_dir = args.out_dir
     path_to_first_state = args.state_file
-    data_distribution_json = args.slice_json
+    data_distribution_json = args.slices_json
 
     logging.info(f"Tokens per iter: {tokens_per_iter}")
     logging.info(f"Warmup iters: {warmup_iters}")
