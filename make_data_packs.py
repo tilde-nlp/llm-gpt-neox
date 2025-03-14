@@ -81,7 +81,7 @@ def main(args):
     tokens_per_iter = args.tokens_per_iter
     warmup_iters = args.warmup_iters
     cd_phase = args.cd_phase
-    max_tokens_per_pack = 8 * 10 ** 9
+    max_tokens_per_pack = args.max_tokens_per_pack
 
     out_dir = args.out_dir
     path_to_first_state = args.state_file
@@ -118,10 +118,10 @@ def main(args):
     Ext = {}
 
     for n, lang in enumerate(langs):
-        U1[lang] = token_distribution["U1"][n]
-        N[lang] = (token_distribution["N"][n] + token_distribution["U2"][n])
-        U3[lang] = token_distribution["U3"][n]
-        Ext[lang] = token_distribution["Ext"][n]
+        U1[lang] = token_distribution["U1"]["total"][n]
+        N[lang] = (token_distribution["N"]["total"][n] + token_distribution["U2"]["total"][n])
+        U3[lang] = token_distribution["U3"]["total"][n]
+        Ext[lang] = token_distribution["Ext"]["total"][n]
 
     # for each language calculate relative % of tokens w.r.t to other languages per phase
     U1_ratio = {}
