@@ -372,12 +372,22 @@ def main(args):
 
     sanity_check(slices, token_counts)
 
+
     # n = 0
     processes = []
 
     state = load_state(path_to_first_state)
+    print(token_counts.keys())
 
     for key in token_counts:
+
+        # sanity
+        t_datapath = state[key]["datapath"]
+        if os.path.exists(t_datapath):  # ✅ Checks if the file or directory exists
+            print(f"✅ File exists: {t_datapath}")
+        else:
+            print(f"❌ File NOT found: {t_datapath} . Skipping")
+            continue
 
         # n += 1
         # if n == 3:
