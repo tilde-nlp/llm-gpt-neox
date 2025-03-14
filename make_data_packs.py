@@ -448,9 +448,9 @@ def main(args):
     for p in processes:
         exit_code = p[1].wait()
         if exit_code != 0:
-            logging.info("Slicing", p[0], "process crashed :(")
+            logging.info(f"Slicing {p[0]} process crashed :(")
         else:
-            logging.info("Slicing", p[0], "sucessful :)")
+            logging.info(f"Slicing {p[0]} process succesfull :(")
 
 
     logging.info("Slicing complete ....")
