@@ -2,7 +2,7 @@ import os
 import yaml
 import json
 import subprocess
-import matplotlib.pyplot as plt
+
 
 from collections import defaultdict
 import logging
