@@ -4,18 +4,6 @@ import yaml
 from megatron.data.indexed_dataset_hacked import MMapIndexedDataset, MMapIndexedDatasetBuilder
 
 import logging
-# set logging level
-log_filename = "slicer.log"
-
-# Configure logging to log both to file and console
-logging.basicConfig(
-    level=logging.INFO,  # Set logging level
-    format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
-    handlers=[
-        logging.FileHandler(log_filename, mode='w'),  # Log to a file
-        logging.StreamHandler()  # Log to console
-    ]
-)
 
 # checks if all .bin files exist
 def validate_state(state_dict):
@@ -176,8 +164,28 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
 
 
 def main(args):
+
     # load the state
     state = load_state(args.state)
+
+    # assume we are given one dset
+
+    dset_name = list(state.keys())[0]
+
+    # set logging level
+    log_filename = f"{dset_name}.slicer.log"
+
+    # Configure logging to log both to file and console
+    logging.basicConfig(
+        level=logging.INFO,  # Set logging level
+        format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+        handlers=[
+            logging.FileHandler(log_filename, mode='w'),  # Log to a file
+            logging.StreamHandler()  # Log to console
+        ]
+    )
+
+
     validate_state(state)
 
     # load the token counts
@@ -292,4 +300,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call main with parsed arguments
+
+
     main(args)

@@ -8,7 +8,7 @@ from collections import defaultdict
 import logging
 
 # set logging level
-log_filename =  "datapack.log"
+log_filename = "datapack.log"
 
 # Configure logging to log both to file and console
 logging.basicConfig(
@@ -22,7 +22,6 @@ logging.basicConfig(
 
 
 def plot_bar(categories, values, phase_name, total_tokens):
-
     values = [v / 10 ** 9 for v in values]
     logging.info(f"{phase_name}: {sum(values):.1f} B tokens [{100 * sum(values) / total_tokens:.2f} %]")
 
@@ -37,8 +36,6 @@ def plot_bar(categories, values, phase_name, total_tokens):
     #
     # # Show the plot
     # plt.show()
-
-
 
 
 def sanity_check(slices, tokens):
@@ -63,7 +60,7 @@ def sanity_check(slices, tokens):
             continue
         total_sum += sum(out[dset])
 
-    total_sum = total_sum / 10**9
+    total_sum = total_sum / 10 ** 9
 
     for dset in out:
         categories = list(slices.keys())
@@ -87,20 +84,19 @@ def main(args):
     max_tokens_per_pack = 8 * 10 ** 9
 
     out_dir = args.out_dir
+    path_to_first_state = args.state_file
+    data_distribution_json = args.slice_json
 
     logging.info(f"Tokens per iter: {tokens_per_iter}")
     logging.info(f"Warmup iters: {warmup_iters}")
     logging.info(f"CD phase: {cd_phase}")
     logging.info(f"Max tokens per pack: {max_tokens_per_pack}")
     logging.info(f"Output dir: {out_dir}")
+    logging.info(f"Data distribution json: {data_distribution_json}")
+    logging.info(f"State: {path_to_first_state}")
 
     assert tokens_per_iter * warmup_iters <= max_tokens_per_pack
-
-    # TODO: add as args
-    data_distribution_json = "misc/slices.json"
-    path_to_first_state = "/scratch/project_465001281/MK/full_pipe_test/state.0.yaml"
-    out_all = "misc"
-    os.makedirs(out_dir + out_all, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
 
     # read in the input file
 
@@ -370,24 +366,56 @@ def main(args):
 
     sanity_check(slices, token_counts)
 
-    # dump the token yaml
-    with open(out_dir + f"/tokens.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(token_counts, f, sort_keys=False)
+    n = 0
+    processes = []
 
-    # dump the state yaml
-    with open(out_dir + f"/slices.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(slices, f, sort_keys=False)
+    for key in token_counts:
 
-    cmd = [
-        "python",
-        "slicer_multi.py",
-        "--tokens", out_dir + f"/tokens.yaml",
-        "--state", path_to_first_state,
-        "--slice", out_dir + f"/slices.yaml",
-        "--out_dir", out_dir
-    ]
-    subprocess.run(cmd, check=True)
+        n += 1
+        if n == 3:
+            break
 
+        neoxpath = "/project/project_465001281/IP/llm-gpt-neox"
+
+        local_token_yaml = {}
+        local_token_yaml[key] = token_counts[key]
+
+        local_slice_yaml = {}
+        local_slice_yaml[key] = slices[key]
+
+        local_out_dir = out_dir + "/" + key
+        os.makedirs(local_out_dir, exist_ok=True)
+
+        # dump the token yaml
+        with open(local_out_dir + f"/tokens.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(local_token_yaml, f, sort_keys=False)
+
+        # dump the slice yaml
+        with open(local_out_dir + f"/slices.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(local_slice_yaml, f, sort_keys=False)
+
+        # run
+
+        print("Slicing ", key)
+
+        cmd = ["srun", "--account=project_465001281", "--partition=small-g", "--gpus-per-node=1",
+               "--ntasks-per-node=1", "--cpus-per-task=7", "--mem-per-gpu=60G", "--time=1:00:00", "--nodes=1"]
+
+        cmd += ["singularity", "exec", "-B", "/scratch:/scratch", "-B", "/project:/project",
+                "/scratch/project_465001281/containers/rocm603_flash.sif"]
+
+        cmd += ["bash", "-c",
+                "$WITH_CONDA ; python " + neoxpath + f"/slicer_multi.py --tokens {local_token_yaml} --state {path_to_first_state} --slice {local_slice_yaml} --out_dir {out_dir}"]
+
+        processes.append((key, subprocess.Popen(cmd)))
+
+
+    for p in processes:
+        exit_code = p[1].wait()
+        if exit_code != 0:
+            print("Slicing", p[0], "process crashed :(")
+        else:
+            print("Slicing", p[0], "sucessful :)")
 
 if __name__ == "__main__":
     import argparse
@@ -398,7 +426,9 @@ if __name__ == "__main__":
     parser.add_argument("--warmup-iters", type=int, required=True)
     parser.add_argument("--cd_phase", type=int, required=True)
     parser.add_argument("--max_tokens_per_pack", type=int, required=True)
-    parser.add_argument("--outdir", type=str, required=True)
+    parser.add_argument("--out_dir", type=str, required=True)
+    parser.add_argument("--slices_json", type=str, required=True)
+    parser.add_argument('--state_file', type=str, required=True)
 
     args = parser.parse_args()
 
