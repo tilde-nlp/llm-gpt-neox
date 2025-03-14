@@ -372,6 +372,10 @@ def main(args):
 
     sanity_check(slices, token_counts)
 
+    logging.info("Sanity succefull!")
+
+    logging.info("Launching slicer ... ")
+
 
     # n = 0
     processes = []
