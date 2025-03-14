@@ -17,7 +17,7 @@
   "vocab_file": "/scratch/project_465001281/tokenizers/4B_Final/model.model",
 
   #Datasets
-  "train_data_paths": ["/scratch/project_465001281/tokenized/final_data_sliced/warmup_0/warmup"], # FIXME: make sure this is changed
+  "train_data_paths": ["/scratch/project_465001281/tokenized/flores/flores_final_text_document.bin"], # FIXME: make sure this is changed
   #"train_data_weights": [1.],
   "valid_data_paths": [""], #FIXME
   "test_data_paths": [""], #FIXME
@@ -95,8 +95,8 @@
 
   #"batch_iteration_offset": 0 # IMPORTANT: pass to skip {b_iter_offset} iterations w.r.t to train_iters, UNTESTED
 
-  "eval_interval": 100, #FIXME
-  "eval_iters": 5,
+  "eval_interval": 500, # FIXME: no idea how fast this is
+  "eval_iters": 1,
   #"override_lr_scheduler": true, #FIXME: tbf, not super sure if we need this anymore, but for everything except warmup it should be true
 
   #Regularization
