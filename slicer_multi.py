@@ -141,7 +141,7 @@ def slice_bin(index_offset: int, token_count: int, indexed_dset: MMapIndexedData
             logging.info("Sliced dataset written to %s[.bin/.idx]" % path_to_out_bin.replace(".bin", ""))
 
             # current index is consumed (we are always oversampling) and future offset is incremented by 1
-            logging.info("Index offset for next slice set to %s" % current_idx + 1)
+            logging.info("Index offset for next slice set to %s" % (current_idx + 1))
             return current_idx + 1
 
         # increment index
