@@ -386,12 +386,15 @@ def main(args):
         local_out_dir = out_dir + "/" + key
         os.makedirs(local_out_dir, exist_ok=True)
 
+        local_token_file = local_out_dir + f"/tokens.yaml"
+        local_slice_file = local_out_dir + f"/slices.yaml"
+
         # dump the token yaml
-        with open(local_out_dir + f"/tokens.yaml", "w", encoding="utf-8") as f:
+        with open(local_token_file, "w", encoding="utf-8") as f:
             yaml.dump(local_token_yaml, f, sort_keys=False)
 
         # dump the slice yaml
-        with open(local_out_dir + f"/slices.yaml", "w", encoding="utf-8") as f:
+        with open(local_slice_file, "w", encoding="utf-8") as f:
             yaml.dump(local_slice_yaml, f, sort_keys=False)
 
         # run
@@ -405,7 +408,7 @@ def main(args):
                 "/scratch/project_465001281/containers/rocm603_flash.sif"]
 
         cmd += ["bash", "-c",
-                "$WITH_CONDA ; python " + neoxpath + f"/slicer_multi.py --tokens {local_out_dir + "/tokens.yaml"} --state {path_to_first_state} --slice {local_out_dir + "/slices.yaml"} --out_dir {out_dir}"]
+                "$WITH_CONDA ; python " + neoxpath + f"/slicer_multi.py --tokens {local_token_file} --state {path_to_first_state} --slice {local_slice_file} --out_dir {out_dir}"]
 
         processes.append((key, subprocess.Popen(cmd)))
 
