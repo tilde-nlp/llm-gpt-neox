@@ -28,3 +28,9 @@ python3 make_data_packs.py
 --slices_json /scratch/project_465001281/tokenized/final_data_sliced/slices_final.json 
 --state_file /scratch/project_465001281/tokenized/final_data_sliced/state.0.yaml
 ```
+
+## Training
+
+```
+bash schedule.sh {training launch sh} {n-jobs} launch_pp_tester.sh
+```
