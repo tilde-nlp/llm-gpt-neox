@@ -434,7 +434,7 @@ def main(args):
         print("Slicing ", key)
 
         cmd = ["srun", "--account=project_465001281", "--partition=small-g", "--gpus-per-node=1",
-               "--ntasks-per-node=1", "--cpus-per-task=7", "--mem-per-gpu=60G", "--time=4:00:00", "--nodes=1"]
+               "--ntasks-per-node=1", "--cpus-per-task=7", "--mem-per-gpu=60G", "--time=8:00:00", "--nodes=1"]
 
         cmd += ["singularity", "exec", "-B", "/scratch:/scratch", "-B", "/project:/project",
                 "/scratch/project_465001281/containers/rocm603_flash.sif"]
