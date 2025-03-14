@@ -450,7 +450,7 @@ def main(args):
         if exit_code != 0:
             logging.info(f"Slicing {p[0]} process crashed :(")
         else:
-            logging.info(f"Slicing {p[0]} process succesfull :(")
+            logging.info(f"Slicing {p[0]} process succesfull :)")
 
 
     logging.info("Slicing complete ....")
