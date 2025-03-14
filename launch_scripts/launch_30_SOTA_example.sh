@@ -3,7 +3,7 @@
 #SBATCH --account project_465001281
 #SBATCH --partition standard-g
 #SBATCH --exclusive=user
-#SBATCH --nodes=3
+#SBATCH --nodes=192
 #SBATCH --gpus-per-node=mi250:8
 #SBATCH --tasks-per-node=8
 #SBATCH --cpus-per-task=7
