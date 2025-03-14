@@ -20,6 +20,12 @@ logging.basicConfig(
     ]
 )
 
+# loads state file
+def load_state(path_to_state):
+    with open(path_to_state, "r", encoding="utf-8") as file:
+        state_data = yaml.safe_load(file)
+
+    return state_data
 
 def plot_bar(categories, values, phase_name, total_tokens):
     values = [v / 10 ** 9 for v in values]
@@ -369,6 +375,8 @@ def main(args):
     n = 0
     processes = []
 
+    state = load_state(path_to_first_state)
+
     for key in token_counts:
 
         n += 1
@@ -383,11 +391,15 @@ def main(args):
         local_slice_yaml = {}
         local_slice_yaml[key] = slices[key]
 
+        local_state_yaml = {}
+        local_state_yaml[key] = state[key]
+
         local_out_dir = out_dir + "/" + key
         os.makedirs(local_out_dir, exist_ok=True)
 
         local_token_file = local_out_dir + f"/tokens.yaml"
         local_slice_file = local_out_dir + f"/slices.yaml"
+        local_state_file = local_out_dir + f"/state.0.yaml"
 
         # dump the token yaml
         with open(local_token_file, "w", encoding="utf-8") as f:
@@ -397,18 +409,20 @@ def main(args):
         with open(local_slice_file, "w", encoding="utf-8") as f:
             yaml.dump(local_slice_yaml, f, sort_keys=False)
 
-        # run
+        # dump the state yaml
+        with open(local_state_file, "w", encoding="utf-8") as f:
+            yaml.dump(local_state_yaml, f, sort_keys=False)
 
         print("Slicing ", key)
 
         cmd = ["srun", "--account=project_465001281", "--partition=small-g", "--gpus-per-node=1",
-               "--ntasks-per-node=1", "--cpus-per-task=7", "--mem-per-gpu=60G", "--time=1:00:00", "--nodes=1"]
+               "--ntasks-per-node=1", "--cpus-per-task=7", "--mem-per-gpu=60G", "--time=4:00:00", "--nodes=1"]
 
         cmd += ["singularity", "exec", "-B", "/scratch:/scratch", "-B", "/project:/project",
                 "/scratch/project_465001281/containers/rocm603_flash.sif"]
 
         cmd += ["bash", "-c",
-                "$WITH_CONDA ; python " + neoxpath + f"/slicer_multi.py --tokens {local_token_file} --state {path_to_first_state} --slice {local_slice_file} --out_dir {out_dir}"]
+                "$WITH_CONDA ; python " + neoxpath + f"/slicer_multi.py --tokens {local_token_file} --state {local_state_file} --slice {local_slice_file} --out_dir {out_dir}"]
 
         processes.append((key, subprocess.Popen(cmd)))
 
