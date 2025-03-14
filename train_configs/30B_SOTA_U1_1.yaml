@@ -1,0 +1,137 @@
+{
+  #Slurm launching relevant
+  "launcher": "slurm",
+  "deepspeed_slurm": true,
+  "no_ssh_check": true,
+
+  #Parallelism
+  "pipe_parallel_size": 0,
+  "model_parallel_size": 8,
+
+  "seed": 42,
+
+  #Tokenizer
+  "make_vocab_size_divisible_by": 1,
+  "tokenizer_type": "SPMTokenizer",
+
+  "vocab_file": "/scratch/project_465001281/tokenizers/4B_Final/model.model",
+
+  #Datasets
+  "train_data_paths": ["/scratch/project_465001281/tokenized/final_data_sliced/U1_1/U1_1"], # FIXME: make sure this is changed
+  #"train_data_weights": [1.],
+  "valid_data_paths": [""], #FIXME
+  "test_data_paths": [""], #FIXME
+    Martins in charge of these
+  "use_shared_fs": true,
+
+  "data_impl": "mmap",
+  "use_flashattn_swiglu": true,
+  #Model shape
+  "num_layers": 60,
+  "attention_config": [[["flash"], 60]],
+  "hidden_size": 6144,
+  "intermediate_size": 64512,
+  #It's a coincidence that this is the same as number of layers.
+  "num_attention_heads": 48,
+  "num_kv_heads": 8,
+  "seq_length": 8192 ,
+  "max_position_embeddings": 65536,
+  "norm": "rmsnorm",
+
+  "rms_norm_epsilon": 3.0e-06,
+
+  "pos_emb": "rotary",
+  "rotary_emb_base": 200000,
+  "no_weight_tying": true,
+  "activation": "swiglu",
+
+  #If i recall correctly there were issues with the conversion script with biases.
+  #Also flash attention required some special configuration of biases.
+  "use_bias_in_mlp": false,
+  "use_bias_in_norms": false,
+  "use_bias_in_attn_linear": false,
+
+  #Weight initialization
+  "init_method": "small_init",
+  "init_method_std": 0.005,
+  # ^ This parameter does nothing when using small_init and wang_init. I think.
+  "output_layer_init_method": "wang_init",
+
+  "scaled_upper_triang_masked_softmax_fusion": true,
+
+  "optimizer":
+    {
+      "type": "Adam",
+      "params": { "lr": 1.8e-4, "betas": [0.9, 0.95], "eps": 1.0e-8 },
+    },
+
+  "min_lr": 3.0e-5, # FIXME: completely irrelevant
+  # Depends on whether we'll do 1-sqrt cooldown.
+  # The sqrt cooldown just decays to 0.
+
+  #"lr_decay_iters": 0, # IMPORTANT: for constant LR this is disabled (or useless)
+  "lr_decay_style": "constant", # IMPORTANT: this should be 'constant'
+  "warmup": 0, # IMPORTANT: 1 = 100% , make sure train_iters is set to 2000 when warmupping
+
+  "zero_optimization":
+    {
+      "stage": 1,
+      "allgather_partitions": True,
+      "allgather_bucket_size": 80000000,
+      "overlap_comm": True,
+      "reduce_scatter": True,
+      "reduce_bucket_size": 80000000,
+      "contiguous_gradients": True,
+    },
+
+  #Batch settings
+  "train_micro_batch_size_per_gpu": 4,
+  "train_batch_size": 512,
+  "gradient_accumulation_steps": 1,
+
+  "train_iters": 28000, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 30 000)
+  "iteration_offset": 2000, # IMPORTANT: name of the last checkpoint on previous datapack:
+                             # e.g. we trained N_1 till global_step60000, we are now starting N_2, so we need to set offset to 60 0000
+
+  #"batch_iteration_offset": 0 # IMPORTANT: pass to skip {b_iter_offset} iterations w.r.t to train_iters, UNTESTED
+
+  "eval_interval": 100, #FIXME
+  "eval_iters": 5,
+  "override_lr_scheduler": true, #FIXME: tbf, not super sure if we need this anymore, but for everything except warmup it should be true
+
+  #Regularization
+  "gradient_clipping": 1.0,
+  "weight_decay": 0.1,
+  "hidden_dropout": 0.0,
+  "attention_dropout": 0.0,
+
+
+  "checkpoint_activations": true,
+  "checkpoint_num_layers": 4,
+  "partition_activations": true,
+  "synchronize_each_layer": false,
+
+  #Misc
+  "precision": "bfloat16",
+  "fp32_allreduce": true,
+
+  "num_workers": 4,
+
+  #Checkpoints
+  "checkpoint_factor": 1500, # IMPORTANT: this should be ~ 9 h of train
+  "exit_interval": 6000, # IMPORTANT: exit every 4 checkpoints, i.e. ~ 36 h
+  "keep_last_n_checkpoints": 100000, # IMPORTANT: unlimited basically, manage manually
+  "save": "/scratch/project_465001281/checkpoints/00_tmp",
+  #"load": ""
+    Martins in charge of these
+
+  #Logging
+  "log_interval": 1,
+  "steps_per_print": 1,
+  "log_grad_pct_zeros": True,
+  "log_grad_norm": True,
+
+  "wall_clock_breakdown": true,
+  "comms_logger":
+    { "enabled": false, "verbose": false, "prof_all": true, "debug": false},
+}
