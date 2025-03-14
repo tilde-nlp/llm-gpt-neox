@@ -384,9 +384,9 @@ def main(args):
         # sanity
         t_datapath = state[key]["datapath"]
         if os.path.exists(t_datapath):  # ✅ Checks if the file or directory exists
-            print(f"✅ File exists: {t_datapath}")
+            logging.info(f"✅ File exists: {t_datapath}")
         else:
-            print(f"❌ File NOT found: {t_datapath} . Skipping")
+            logging.info(f"❌ File NOT found: {t_datapath} . Skipping")
             continue
 
         # n += 1
@@ -404,7 +404,7 @@ def main(args):
         local_state_yaml = {}
         local_state_yaml[key] = state[key]
 
-        local_out_dir = out_dir + "/tmp/" + key
+        local_out_dir = out_dir + "/states/" + key
         os.makedirs(local_out_dir, exist_ok=True)
 
         local_token_file = local_out_dir + f"/tokens.yaml"
@@ -440,9 +440,12 @@ def main(args):
     for p in processes:
         exit_code = p[1].wait()
         if exit_code != 0:
-            print("Slicing", p[0], "process crashed :(")
+            logging.info("Slicing", p[0], "process crashed :(")
         else:
-            print("Slicing", p[0], "sucessful :)")
+            logging.info("Slicing", p[0], "sucessful :)")
+
+
+    logging.info("Slicing complete ....")
 
 if __name__ == "__main__":
     import argparse

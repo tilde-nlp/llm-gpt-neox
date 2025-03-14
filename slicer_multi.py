@@ -173,7 +173,8 @@ def main(args):
     dset_name = list(state.keys())[0]
 
     # set logging level
-    log_filename = f"{dset_name}.slicer.log"
+    log_filename = args.out_dir + f"/logs/{dset_name}.slicer.log"
+    os.makedirs(args.out_dir + "/logs", exist_ok=True)
 
     # Configure logging to log both to file and console
     logging.basicConfig(
