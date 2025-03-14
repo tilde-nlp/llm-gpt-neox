@@ -230,7 +230,7 @@ def main(args):
     logging.info("Slicing N ...")
     # determine remaining number of tokens
     remaining_N_tokens = N_sum
-    logging.info(f"remaining U1 tokens: {remaining_N_tokens} [{100 * remaining_N_tokens / train_sum:.2f} %]")
+    logging.info(f"remaining N tokens: {remaining_N_tokens} [{100 * remaining_N_tokens / train_sum:.2f} %]")
     # determine how many slices
     slices = int(remaining_N_tokens // max_tokens_per_pack) + 1  # int() needed cause 0 is returned as float
     logging.info("N slices: {}".format(slices))
@@ -418,6 +418,10 @@ def main(args):
         local_token_file = local_out_dir + f"/tokens.yaml"
         local_slice_file = local_out_dir + f"/slices.yaml"
         local_state_file = local_out_dir + f"/state.0.yaml"
+
+        logging.info(f"Writing tokens to file: {local_token_file}")
+        logging.info(f"Writing slices to file: {local_slice_file}")
+        logging.info(f"Writing state to file: {local_state_file}")
 
         # dump the token yaml
         with open(local_token_file, "w", encoding="utf-8") as f:
