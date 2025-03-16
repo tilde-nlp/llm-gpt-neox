@@ -3,11 +3,11 @@
 # Base directory containing the subfolders
 # Example:
 # folder to merge
-BASE_DIR="/scratch/project_465001281/tokenized/1B_gucci_sliced/merged/N"
-OUTPUT_DIR="/scratch/project_465001281/tokenized/1B_gucci_sliced/merged/N/1B_N_4" # this will create an unnecessary subfolder for some reason
-CONTAINER_PATH="/scratch/project_465001281/MK/rocm603_martin_local"
+BASE_DIR="/scratch/project_465001281/tokenized/final_data_sliced/warmup_0"
+OUTPUT_DIR="/scratch/project_465001281/tokenized/final_data_sliced/merged/warmup_0" # this will create an unnecessary subfolder for some reason
+CONTAINER_PATH="/scratch/project_465001281/containers/rocm603_flash.sif"
  # needs to point to the folder where merge_datasets_mmap.py is located
-PROJECT_DIR="/project/project_465001281/llm-gpt-neox/tools/datasets"
+PROJECT_DIR="/project/project_465001281/IP/llm-gpt-neox/tools/datasets"
 
 # Get the first subfolder (for testing one iteration)
 #folder=$(ls -d "$BASE_DIR"/*/ | head -n 1)
