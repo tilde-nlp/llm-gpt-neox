@@ -93,7 +93,7 @@ export DLTS_HOSTFILE=./hostfiles/hosts_$SLURM_JOBID
 #This command will tell deepy.py to run training with the config 00_example.yml.
 CMD="$NEOX_DIR/deepy.py \
   $NEOX_DIR/train.py \
-  $NEOX_DIR/launch_scripts/full_pipe_test_merged_fix_nobias_refix/N_2/30_SOTA_962M_N.yml
+  $NEOX_DIR/launch_scripts/final_train/warmup/30B_SOTA_warmup.yml
   "
 
 
