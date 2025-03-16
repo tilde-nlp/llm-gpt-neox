@@ -117,8 +117,8 @@
   "num_workers": 4,
 
   #Checkpoints
-  "checkpoint_factor": 1500, # IMPORTANT: this should be ~ 9 h of train
-  "exit_interval": 6000, # IMPORTANT: exit every 4 checkpoints, i.e. ~ 36 h
+  "checkpoint_factor": 1750, # IMPORTANT: this should be ~ 9 h of train
+  "exit_interval": 8750, # IMPORTANT: exit every 4 checkpoints, i.e. ~ 36 h
   "keep_last_n_checkpoints": 100000, # IMPORTANT: unlimited basically, manage manually
   "save": "/scratch/project_465001281/MK/checkpoints/final_train",
   #"load": ""
