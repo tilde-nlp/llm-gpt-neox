@@ -39,6 +39,6 @@ srun --account=project_465001281 \
      --time=2:00:00 \
      --nodes=1 \
      singularity exec "$CONTAINER_PATH" \
-     bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python ../merge_datasets_mmap.py --input '$folder' --output-prefix '$OUTPUT_DIR/$folder_name'"
+     bash -c "cd $PROJECT_DIR; \$WITH_CONDA; python merge_datasets_mmap.py --input '$folder' --output-prefix '$OUTPUT_DIR/$folder_name'"
 
 echo "Merging of '$folder_name' completed."
