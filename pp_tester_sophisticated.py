@@ -369,6 +369,20 @@ def create_temp_subfolder(root_temp_dir):
 
     return temp_subfolder
 
+def move_datasets_to_correct_device(datasets, model):
+    """
+    Moves dataset tensors to the same device as the model's first parameter.
+    Ensures efficient computation without unnecessary GPU communication.
+    """
+    model_device = next(model.parameters()).device  # Get the first model device
+    print(f"Moving {len(datasets)} datasets to {model_device}")
+    datasets_ = []
+
+    for dataset in datasets:
+        dataset_ = [torch.tensor(sample, dtype=torch.long, device=model_device) for sample in dataset]
+        datasets_.append(dataset_)
+
+    return datasets_
 
 def main():
     args = parse_args()
@@ -441,10 +455,14 @@ def main():
                 if args.architecture.upper() == "NEOX":
                     model = GPTNeoXForCausalLM.from_pretrained(tmp_path, device_map="auto")
                 elif args.architecture.upper() == "LLAMA":
-                    model = LlamaForCausalLM.from_pretrained(tmp_path, device_map={"": "cuda:0"})
+                    model = LlamaForCausalLM.from_pretrained(tmp_path, device_map="auto")
                 else:
                     raise ValueError(f"Huggingface --architecture {args.architecture} not recognized.")
             print(model.hf_device_map)
+
+            # Move data to correct gpus
+            print("Moving data ...")
+            datasets = move_datasets_to_correct_device(datasets, model)
 
             # Evaluate checkpoint.
             print("Performing testing.")
