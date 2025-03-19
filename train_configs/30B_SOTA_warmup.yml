@@ -64,6 +64,9 @@
       "params": { "lr": 1.8e-4, "betas": [0.9, 0.95], "eps": 1.0e-8 },
     },
 
+  "clip_grad": 0.4,
+  "gradient_clipping": 0.4,
+
   "min_lr": 3.0e-5, # FIXME: completely irrelevant
   # Depends on whether we'll do 1-sqrt cooldown.
   # The sqrt cooldown just decays to 0.
@@ -88,7 +91,7 @@
   "train_batch_size": 576,
   "gradient_accumulation_steps": 1,
 
-  "train_iters": 2000, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 30 000)
+  "train_iters": 2000, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 35 000)
   #"iteration_offset": 30000, # IMPORTANT: name of the last checkpoint on previous datapack:
                              # e.g. we trained N_1 till global_step60000, we are now starting N_2, so we need to set offset to 60 0000
 
@@ -99,7 +102,6 @@
   #"override_lr_scheduler": true, #FIXME: tbf, not super sure if we need this anymore, but for everything except warmup it should be true
 
   #Regularization
-  "gradient_clipping": 1.0,
   "weight_decay": 0.1,
   "hidden_dropout": 0.0,
   "attention_dropout": 0.0,
@@ -112,7 +114,7 @@
 
   #Misc
   "precision": "bfloat16",
-  "fp32_allreduce": true,
+  "fp32_allreduce": false, # FIXME: should be false
 
   "num_workers": 4,
 
@@ -120,7 +122,7 @@
   "checkpoint_factor": 1750, # IMPORTANT: this should be ~ 9 h of train
   "exit_interval": 8750, # IMPORTANT: exit every 4 checkpoints, i.e. ~ 36 h
   "keep_last_n_checkpoints": 100000, # IMPORTANT: unlimited basically, manage manually
-  "save": "/scratch/project_465001281/MK/checkpoints/final_train",
+  "save": "/scratch/project_465001281/MK/checkpoints/final_train_v2",
   #"load": ""
 
   #Logging
