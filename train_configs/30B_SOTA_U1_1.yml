@@ -91,7 +91,7 @@
   "train_batch_size": 576,
   "gradient_accumulation_steps": 1,
 
-  "train_iters": 29790, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 30 000)
+  "train_iters": 29790, # IMPORTANT: 2000 for warmup, {size of datapack} otherwise (usually 35 000)
   "iteration_offset": 2000, # IMPORTANT: name of the last checkpoint on previous datapack:
                              # e.g. we trained N_1 till global_step60000, we are now starting N_2, so we need to set offset to 60 0000
 
@@ -119,8 +119,8 @@
   "num_workers": 4,
 
   #Checkpoints
-  "checkpoint_factor": 1750, # IMPORTANT: this should be ~ 9 h of train
-  "exit_interval": 8750, # IMPORTANT: exit every 4 checkpoints, i.e. ~ 36 h
+  "checkpoint_factor": 1750, # IMPORTANT: this should be ~ 8 h of train
+  "exit_interval": 8750, # IMPORTANT: exit every 5 checkpoints, i.e. ~ 40 h
   "keep_last_n_checkpoints": 100000, # IMPORTANT: unlimited basically, manage manually
   "save": "/scratch/project_465001281/MK/checkpoints/final_train_v2",
   "load": "/scratch/project_465001281/MK/checkpoints/final_train_v2",
