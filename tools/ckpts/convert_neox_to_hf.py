@@ -174,7 +174,8 @@ def load_partitions(
                 input_checkpoint_path,
                 filename_format.format(i=i),
             ),
-            map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+            #map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+            map_location=torch.device("cpu"),
         )
         for i in range(mp_partitions)
     ]
