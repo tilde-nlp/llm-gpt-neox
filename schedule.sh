@@ -56,7 +56,7 @@ for (( i=1; i<=n; i++ )); do
         primary_job_id=$(sbatch --parsable "$job_script")
     else
         # Submit subsequent primary jobs with dependency on the previous one
-        primary_job_id=$(sbatch --dependency=afterok:$prev_job_id --parsable "$job_script")
+        primary_job_id=$(sbatch --dependency=afterany:$prev_job_id --parsable "$job_script")
     fi
 
     # Check if primary job submission was successful
