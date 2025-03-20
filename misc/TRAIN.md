@@ -12,13 +12,13 @@ This excercise is left to the reader ;^)
 
 ### Create state file
 
-```
+```bash
 python3 create_0_state_file.py
 ```
 
 ### Run slicer
 
-```
+```bash
 python3 make_data_packs.py
 --tokens-per-iter 4718592 
 --warmup-iters 2000 
@@ -68,7 +68,7 @@ Merged datapacks per phase are stored in:
 
 To create a merged datapack from sliced data for a phase XX (i.e. training ready):
 
-```
+```bash
 cd /project/project_465001281/IP/llm-gpt-neox/misc
 source purge.sh
 bash merge_single_folder.sh \
@@ -89,7 +89,7 @@ Output (~ 5-10 min) :
 
 To estimate what value to use for *train_iters* for all merged phases:
 
-```
+```bash
 bash iters_per_datapack.sh \
     /scratch/project_465001281/tokenized/final_data_sliced/merged
 ```
@@ -145,7 +145,7 @@ Change/check the following keys in the XX yml config:
 
 Change #SBATCH --job-name (optionally) and edit **CMD command** in *launch_30_SOTA_example.sh* to point to your .yml file:
 
-```shell
+```bash
 #SBATCH --job-name=phaseXX
 #This command will tell deepy.py to run training with the config 00_example.yml.
 CMD="$NEOX_DIR/deepy.py \
@@ -156,14 +156,14 @@ CMD="$NEOX_DIR/deepy.py \
 
 Change config/output paths in  *launch_pp_tester.sh* :
 
-```shell
+```bash
 CONFIG_FILE="$NEOX_DIR/launch_scripts/final_train/XX/30B_SOTA_XX.yml"
 OUTPUT_CSV_FOLDER="/project/project_465001281/IP/llm-gpt-neox/launch_scripts/final_train_v2"
 ```
 
 ### Begin training
 
-```shell
+```bash
 bash schedule.sh launch_30_SOTA_example.sh {n_jobs} launch_pp_tester.sh
 ```
 
