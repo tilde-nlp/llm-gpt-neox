@@ -4,7 +4,7 @@
 #SBATCH --partition standard-g
 #SBATCH --exclusive=user
 #SBATCH --nodes=1
-#SBATCH --gpus-per-node=mi250:1
+#SBATCH --gpus-per-node=mi250:8
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=7
 #SBATCH --mem=60G
@@ -91,8 +91,8 @@ export DLTS_HOSTFILE=./hostfiles/hosts_$SLURM_JOBID
 NEOX_DIR="/project/project_465001281/IP/llm-gpt-neox"
 
 # IMPORTANT: change these
-CONFIG_FILE="$NEOX_DIR/launch_scripts/full_pipe_test_merged_fix_nobias/warmup/30_SOTA_962M_warmup.yml"
-OUTPUT_CSV_FOLDER="/scratch/project_465001281/MK/checkpoints/full_pipe_test_1B_merged_fix_nobias"
+CONFIG_FILE="$NEOX_DIR/launch_scripts/final_train/U1_1/30B_SOTA_U1_1.yml"
+OUTPUT_CSV_FOLDER="/project/project_465001281/IP/llm-gpt-neox/launch_scripts/final_train_v2"
 
 # IMPORTANT: most likely dont change these
 TEST_FOLDER="/scratch/project_465001281/MK/data"
