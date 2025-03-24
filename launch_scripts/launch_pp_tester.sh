@@ -7,7 +7,7 @@
 #SBATCH --gpus-per-node=mi250:8
 #SBATCH --tasks-per-node=1
 #SBATCH --cpus-per-task=7
-#SBATCH --mem=60G
+#SBATCH --mem=0
 #SBATCH --time=48:00:00
 #SBATCH --hint=nomultithread
 #SBATCH --job-name=pp_bench
