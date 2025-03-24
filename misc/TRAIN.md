@@ -5,19 +5,19 @@ This pipeline assumes data has been properly **upsampled** and is **sufficient**
 ## Slice data [done]
 
 ### Create slice file
-
+This is the file describing the proportions for each language. 
 ```
 This excercise is left to the reader ;^)
 ```
 
 ### Create state file
-
+Used by the slicer for indexing into the bin file.
 ```bash
 python3 create_0_state_file.py
 ```
 
 ### Run slicer
-
+Takes ths state file and slice file, training phase proportions, and other info to produce unmerged data packs.
 ```bash
 python3 make_data_packs.py
 --tokens-per-iter 4718592 
