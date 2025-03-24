@@ -77,12 +77,12 @@ bash merge_single_folder.sh \
 
 ```
 Output (~ 5-10 min) : 
-- scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin
-- scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.idx
-- scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.merge.log
+- /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin
+- /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.idx
+- /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.merge.log
 
 
-**scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin** should then be passed to the training script
+**/scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin** should then be passed to the training script
 
 
 ### Estimate num iterations for phase XX
