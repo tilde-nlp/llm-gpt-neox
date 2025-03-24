@@ -101,7 +101,7 @@ Output:
 /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/: 1337.69
 ```
 
-***NOTE***: estimation is hardcoded for 8192 * 576 (seq_len * batch_size)
+***NOTE***: estimation is hardcoded for 8192 * 576 (seq_len * batch_size) - this will not work for different seq_len or batch sizes.
 
 
 ### Create phase train folder & config
