@@ -77,7 +77,7 @@ class AnnealingLR(object):
         if self.neox_args and self.warmup_iter > 0 and self.unset:
             if self.neox_args.iteration_offset:
                 num_iters_ = num_iters_ - self.neox_args.iteration_offset
-                assert(num_iters_ > 0)
+                assert(num_iters_ >= 0)
 
         print_rank_0("--------- LR schedule ---------")
         print_rank_0("------- > num_iters (faked): {}".format(num_iters_))
