@@ -64,10 +64,16 @@ def report_memory(name):
     print_rank_0(string)
 
 
-def get_attn_mask(seq_length, device, sliding_window_width):
+def get_attn_mask(seq_length, device, sliding_window_width, batch_size=1):
     """
     Get triangular attention mask for a given sequence length / device.
     """
+
+    if os.environ.get("CURSE_ATTENTION", "0") == "1":
+        mask = torch.tril(torch.ones(
+            (batch_size, seq_length, seq_length), device=device)).view(batch_size, 1, seq_length, seq_length)
+        return mask
+
     # lower triangular attention mask
     mask = torch.tril(torch.ones((1, seq_length, seq_length), device=device)).view(
         1, 1, seq_length, seq_length
@@ -96,7 +102,20 @@ def get_ltor_masks_and_position_ids(
         seq_length=seq_length,
         device=data.device,
         sliding_window_width=sliding_window_width,
+        batch_size=batch_size
     )
+
+
+    if os.environ.get("CURSE_ATTENTION", "0") == "1":
+
+        # Step 2: Use EOD token to zero out cross-document attention
+        for b in range(batch_size):
+            eod_positions = (data[b] == eod_token).nonzero(as_tuple=False).flatten()
+            for i in eod_positions:
+                attention_mask[b, 0, (i + 1):, :i + 1] = 0.0  # Remove cross-document attention
+
+        # convert to bool and flip
+        attention_mask = attention_mask < 0.5
 
     # Loss mask.
     loss_mask = torch.ones(data.size(), dtype=torch.float, device=data.device)
