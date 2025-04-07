@@ -19,6 +19,7 @@
 
 import math
 from contextlib import nullcontext
+import os
 
 import torch
 import torch.nn.functional as F
@@ -335,6 +336,10 @@ class ParallelSelfAttention(nn.Module):
     ):
         super().__init__()
 
+        import os
+        self.curse_attention = os.environ.get("CURSE_ATTENTION") == "1"
+        print("Ad hoc attention fix " + str(self.curse_attention), end = " ")
+
         self.fp16 = neox_args.precision == "fp16"
         self.bf16 = neox_args.precision == "bfloat16"
         self.attention_mask_func = attention_mask_func
@@ -617,7 +622,7 @@ class ParallelSelfAttention(nn.Module):
         context_layer = context_layer.view(*output_size)
         return context_layer
 
-    def flash_attention(self, query_layer, key_layer, value_layer):
+    def flash_attention(self, query_layer, key_layer, value_layer, attention_mask=None):
         # [b, np, sq, sk]
         output_size = (
             query_layer.size(1),
@@ -699,6 +704,47 @@ class ParallelSelfAttention(nn.Module):
                     **extra_kwargs,
                 )
                 output = output.reshape(q_shape)
+            elif self.curse_attention:
+                # Merge batch and sequence dimensions
+                #query_layer = query_layer.reshape([query_layer.size(0) * query_layer.size(1), query_layer.size(2), query_layer.size(3)])
+                #key_layer = key_layer.reshape([key_layer.size(0) * key_layer.size(1), key_layer.size(2), key_layer.size(3)])
+                #value_layer = value_layer.reshape([value_layer.size(0) * value_layer.size(1), value_layer.size(2), value_layer.size(3)])
+                outputs = []
+                for i in range(query_layer.shape[0]):
+                  query_layer_ = query_layer[i]
+                  key_layer_ = key_layer[i]
+                  value_layer_ = value_layer[i]
+
+                  #Compute sequence starting points.
+                  #The dirtiest way to compute it:
+                  attention_sum = attention_mask[i].view([-1, attention_mask.shape[2]]).sum(dim=1)
+                  diff = attention_sum[1:] - attention_sum[:-1]
+                  ends = (diff < 0.5).nonzero().squeeze(-1).int() + 1
+                  cu_seqlens_q = torch.tensor([0], dtype=torch.int32, device=query_layer.device)
+                  cu_seqlens_q = torch.cat([cu_seqlens_q, ends, torch.tensor([query_layer_.shape[0]], dtype=torch.int32, device=query_layer.device)])
+                  cu_seqlens_k = cu_seqlens_q
+                  max_seqlen_q = query_layer_.shape[0]
+                  max_seqlen_k = query_layer_.shape[0]
+
+                  output = self.flash_varlen_qkv_fn(
+                      query_layer_,
+                      key_layer_,
+                      value_layer_,
+                      cu_seqlens_q,
+                      cu_seqlens_k,
+                      max_seqlen_q,
+                      max_seqlen_k,
+                      self.dropout_p if self.training else 0.0,
+                      softmax_scale=None,
+                      causal=True,
+                      **extra_kwargs,
+                  )
+
+                  outputs.append(output)
+
+                output = torch.stack(outputs, dim = 0)
+
+                output = output.reshape([output_size[0], output_size[2], output_size[1], -1])
             else:
                 output = self.flash_qkv_fn(
                     query_layer,
@@ -922,9 +968,14 @@ class ParallelSelfAttention(nn.Module):
 
         if self.use_cache:
             present = torch.stack((key_layer, value_layer))
-
+        
         if self.use_flash_attention:
-            context_layer = self.flash_attention(query_layer, key_layer, value_layer)
+            # FIXME: martin here. Disgusting ghetto fix straight to production 04.04.2025
+            if os.getenv("CURSE_ATTENTION") == "1":
+                context_layer = self.flash_attention(query_layer, key_layer, value_layer, attention_mask=attention_mask)
+            else:
+                context_layer = self.flash_attention(query_layer, key_layer, value_layer)
+
         elif not self.sparse:
             context_layer = self.attention(
                 query_layer, key_layer, value_layer, layer_past, attention_mask
