@@ -726,9 +726,9 @@ class ParallelSelfAttention(nn.Module):
                   max_seqlen_q = query_layer_.shape[0]
                   max_seqlen_k = query_layer_.shape[0]
 
-                  if torch.distributed.get_rank() == 0:
-                    print(cu_seqlens_q)
-                    exit()
+                  #if torch.distributed.get_rank() == 0:
+                  #  print(cu_seqlens_q)
+                  #  exit()
                   output = self.flash_varlen_qkv_fn(
                       query_layer_,
                       key_layer_,
