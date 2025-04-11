@@ -37,7 +37,7 @@ if __name__ == '__main__':
     is_builder_set = False
 
     # iterate through the documents
-    for current_idx in tqdm(range(0, indexed_dset.__len__() + 1)):
+    for current_idx in tqdm(range(0, indexed_dset.__len__())):
         # get a document's tokens
         temp_tokens = indexed_dset.get(current_idx)
         # infer data type from current document tokens
