@@ -338,7 +338,8 @@ class ParallelSelfAttention(nn.Module):
 
         import os
         self.curse_attention = os.environ.get("CURSE_ATTENTION") == "1"
-        print("Ad hoc attention fix " + str(self.curse_attention), end = " ")
+        if torch.distributed.get_rank() == 0:
+            print("Ad hoc attention fix " + str(self.curse_attention), end = " ")
 
         self.fp16 = neox_args.precision == "fp16"
         self.bf16 = neox_args.precision == "bfloat16"
@@ -680,7 +681,6 @@ class ParallelSelfAttention(nn.Module):
                     dtype=torch.int32,
                     device=key_layer.device,
                 )
-
                 q_shape = query_layer.shape
                 k_shape = key_layer.shape
                 v_shape = value_layer.shape
@@ -717,15 +717,18 @@ class ParallelSelfAttention(nn.Module):
 
                   #Compute sequence starting points.
                   #The dirtiest way to compute it:
-                  attention_sum = attention_mask[i].view([-1, attention_mask.shape[2]]).sum(dim=1)
+                  attention_sum = attention_mask[i, 0].view([-1, attention_mask.shape[2]]).sum(dim=1)
                   diff = attention_sum[1:] - attention_sum[:-1]
-                  ends = (diff < 0.5).nonzero().squeeze(-1).int() + 1
+                  ends = (diff > -0.5).nonzero().squeeze(-1).int() + 1
                   cu_seqlens_q = torch.tensor([0], dtype=torch.int32, device=query_layer.device)
                   cu_seqlens_q = torch.cat([cu_seqlens_q, ends, torch.tensor([query_layer_.shape[0]], dtype=torch.int32, device=query_layer.device)])
                   cu_seqlens_k = cu_seqlens_q
                   max_seqlen_q = query_layer_.shape[0]
                   max_seqlen_k = query_layer_.shape[0]
 
+                  if torch.distributed.get_rank() == 0:
+                    print(cu_seqlens_q)
+                    exit()
                   output = self.flash_varlen_qkv_fn(
                       query_layer_,
                       key_layer_,
