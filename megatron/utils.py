@@ -111,8 +111,10 @@ def get_ltor_masks_and_position_ids(
         # Step 2: Use EOD token to zero out cross-document attention
         for b in range(batch_size):
             eod_positions = (data[b] == eod_token).nonzero(as_tuple=False).flatten()
+            prev_idx = 0
             for i in eod_positions:
-                attention_mask[b, 0, (i + 1):, :i + 1] = 0.0  # Remove cross-document attention
+                attention_mask[b, 0, (i + 1):, prev_idx:(i + 1)] = 0.0  # Remove cross-document attention
+                prev_idx = i
 
         # convert to bool and flip
         attention_mask = attention_mask < 0.5
