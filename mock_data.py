@@ -24,13 +24,10 @@ def generate_mock_documents(n, m):
 
     return documents
 
-# Example usage:
-# n = 10000  # number of documents
-# m = 10  # max document length
-# mock_docs = generate_mock_documents(n, m)
-#
-# for i, doc in enumerate(mock_docs):
-#     print(f"Doc {i + 1}: {doc}")
+# load idx/bin into megatron IndexedDataset class
+def load_indexed_dset(path_to_bin):
+    # needs dataset prefix, adds ".idx" extension automatically
+    return MMapIndexedDataset(path_to_bin.replace(".bin", ""))
 
 if __name__ == '__main__':
 
@@ -47,7 +44,20 @@ if __name__ == '__main__':
     max_doc_len = int(sys.argv[3])
 
     # initialize builder with correct datatype
-    dtype = np.int64
+    # dtype = np.int64
+
+    # apparently int64 doesn't cut it
+    # so try to hardcode infer
+    path_to_inp_bin = "/scratch/project_465001281/tokenized/final_data_sliced/warmup_0/ltg_slice0_0_342338.bin"
+    indexed_dset = load_indexed_dset(path_to_inp_bin)
+    # get a document's tokens
+    temp_tokens = indexed_dset.get(1)
+    # infer data type from current document tokens
+    dtype = temp_tokens.dtype
+    print(f"dtype: {dtype}")
+
+    del indexed_dset
+
     indexed_dset_builder = make_indexed_dset_builder(path_to_out_bin, dtype=dtype)
 
     # generate mock docs
