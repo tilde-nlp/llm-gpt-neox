@@ -156,16 +156,17 @@ class GPT2Dataset(torch.utils.data.Dataset):
                             sample_lengths.append(len(sample_list[-1]))
                     # And finally add the relevant portion of last document.
                     # TODO: this needs to be hidden under  if offset_l > 0 :
-                    if n == rw_indx:
-                        rw = dataset.get(self.doc_idx[doc_index_l])
-                        sample_list.append(
-                            np.array([rw[0] for _ in range(sample_lengths.pop(0))])
-                        )
-                    else:
-                        sample_list.append(
-                            dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1)
-                        )
-                        sample_lengths.append(len(sample_list[-1]))
+                    if offset_l > 0:
+                        if n == rw_indx:
+                            rw = dataset.get(self.doc_idx[doc_index_l])
+                            sample_list.append(
+                                np.array([rw[0] for _ in range(sample_lengths.pop(0))])
+                            )
+                        else:
+                            sample_list.append(
+                                dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1)
+                            )
+                            sample_lengths.append(len(sample_list[-1]))
                     samples.append(np.concatenate(sample_list))
             for i in range(len(samples)):
                 mask = (self.label_dataset is not None) and (i == 1)
