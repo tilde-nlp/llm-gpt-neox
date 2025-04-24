@@ -367,6 +367,129 @@ def _build_index_mappings(
                 np.save(sample_idx_filename, sample_idx, allow_pickle=True)
                 np.save(shuffle_idx_filename, shuffle_idx, allow_pickle=True)
 
+            elif packing_impl == "k_bin_packed":
+                # Pack data until it overflows, then create a new bin
+                # Keep at most k bins
+                k = 16
+
+                TOKS_PER_SAMPLE = seq_length + 1  # +1 since we shift left/right by 1
+
+                # --------------------------------------------------------------
+                # helper: flush open bins -> merged samples
+                # --------------------------------------------------------------
+                # TODO: it can have a better merge, but meh its only for at most of k samples
+                def flush_bins(bins, doc_idx, sample_idx, sample_lengths):
+                    if not bins:
+                        return
+                    bins.sort(key=lambda b: b["used"], reverse=True)  # greedy best-fit
+                    cur_ptr = len(doc_idx)
+                    cur_used = 0
+                    for b in bins:
+                        if cur_used + b["used"] > TOKS_PER_SAMPLE:
+                            sample_idx.append([cur_ptr, 0])
+                            sample_lengths.append(cur_used)
+                            cur_ptr, cur_used = len(doc_idx), 0
+                        doc_idx.extend(b["docs"])
+                        cur_used += b["used"]
+                    sample_idx.append([cur_ptr, 0])  # close final merged bin
+                    sample_lengths.append(cur_used)
+                    bins.clear()
+
+                # --------------------------------------------------------------
+                # main loop
+                # --------------------------------------------------------------
+                num_docs = len(sizes)
+                documents = np.arange(num_docs, dtype=np.int32)
+
+                doc_idx: list[int] = []
+                sample_idx: list[list[int]] = []
+                sample_lengths: list[int] = []
+                bins = []  # each bin = {"docs":[...], "used":int}
+
+                np_rng.shuffle(documents)
+                sweep_i = 0
+                while len(sample_idx) < num_samples:
+                    # wrap-around → flush + reshuffle
+                    if sweep_i == num_docs:
+                        flush_bins(bins, doc_idx, sample_idx, sample_lengths)
+                        np_rng.shuffle(documents)
+                        sweep_i = 0
+                        continue
+
+                    doc_id = int(documents[sweep_i])
+                    sweep_i += 1
+                    doc_len = int(sizes[doc_id])
+
+                    if doc_len > TOKS_PER_SAMPLE:
+                        print_rank_0(f" > WARNING: skipping doc {doc_id} ({doc_len} > {TOKS_PER_SAMPLE})")
+                        continue
+
+                    # best-fit placement
+                    best, slack = None, TOKS_PER_SAMPLE + 1
+                    for b in bins:
+                        s = TOKS_PER_SAMPLE - (b["used"] + doc_len)
+                        if 0 <= s < slack:
+                            best, slack = b, s
+
+                    if best is not None:
+                        best["docs"].append(doc_id)
+                        best["used"] += doc_len
+                        continue
+
+                    # need new bin
+                    if len(bins) == k:
+                        fullest = max(bins, key=lambda b: b["used"])
+                        bins.remove(fullest)
+                        flush_bins([fullest], doc_idx, sample_idx, sample_lengths)
+
+                    bins.append({"docs": [doc_id], "used": doc_len})
+
+                # flush remaining partial bins
+                flush_bins(bins, doc_idx, sample_idx, sample_lengths)
+
+                # sentinel row
+                sentinel_ptr = len(doc_idx)
+                sample_idx.append([sentinel_ptr, 0])
+                doc_idx.append(doc_idx[0])  # dummy doc for sentinel safety
+
+                # convert to numpy
+                sample_idx = np.asarray(sample_idx, dtype=np.int64)
+                #doc_idx = np.asarray(doc_idx, dtype=np.int32) # this isn't converted in code above
+
+                shuffle_idx = np.arange(len(sample_idx) - 1, dtype=np.int64)
+                np_rng.shuffle(shuffle_idx)
+
+                # --------------------------------------------------------------
+                # metrics
+                # --------------------------------------------------------------
+                requested_samples = num_samples
+                generated_samples = len(sample_idx) - 1  # minus sentinel
+                oversamp_samples_pct = 100.0 * (generated_samples - requested_samples) / requested_samples
+
+                requested_token_cap = requested_samples * TOKS_PER_SAMPLE
+                generated_token_cap = generated_samples * TOKS_PER_SAMPLE
+                oversamp_tokens_pct = 100.0 * (generated_token_cap - requested_token_cap) / requested_token_cap
+
+                true_tokens = sum(sample_lengths)
+                packing_eff_pct = 100.0 * true_tokens / generated_token_cap
+
+                print_rank_0("=== k-bin packing summary ===")
+                print_rank_0(f" > requested samples        : {requested_samples}")
+                print_rank_0(f" > generated samples        : {generated_samples}")
+                print_rank_0(f" > oversampling (samples)   : {oversamp_samples_pct:6.2f} %")
+                print_rank_0(f" > oversampling (tokens)    : {oversamp_tokens_pct:6.2f} %")
+                print_rank_0(f" > packing efficiency       : {packing_eff_pct:6.2f} % (non-pad tokens)")
+
+                # -----------------------------------------------------------
+                # save to disk
+                # -----------------------------------------------------------
+
+                np.save(doc_idx_filename, doc_idx, allow_pickle=True)
+                np.save(sample_idx_filename, sample_idx, allow_pickle=True)
+                np.save(shuffle_idx_filename, shuffle_idx, allow_pickle=True)
+
+
+
     # This should be a barrier but nccl barrier assumes
     # device_index=rank which is not the case for model
     # parallel case
