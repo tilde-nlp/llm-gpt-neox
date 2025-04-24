@@ -1072,7 +1072,7 @@ class NeoXArgsTraining(NeoXArgsTemplate):
     Implementation of indexed datasets, can be one of "infer", "cached", or "mmap"
     """
 
-    pack_impl: Literal["packed", "pack_until_overflow", "unpacked"] = "packed"
+    pack_impl: Literal["packed", "pack_until_overflow", "unpacked", "k_bin_packed"] = "packed"
     """
     Packing implementation, can be one of "packed", "pack_until_overflow", or "unpacked".
 
