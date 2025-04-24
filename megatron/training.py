@@ -618,6 +618,14 @@ def forward_step(
         torch.cuda.nvtx.range_push(f"Forward pass")
     metrics = {}
     if neox_args.train_impl == "normal":
+
+        # FIXME: debug print
+        print_rank_0("Training 'normal' forward pass")
+        print_rank_0("Tokens: {}".format(tokens.size))
+        batch_size, seq_length = tokens.size()
+        for b in range(batch_size):
+            print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
+
         # Sequential returns moe_losses, but this is not yet supported by pipe parallel
         maybe_tuple = model((tokens, position_ids, attention_mask), neox_args=neox_args)
         if type(maybe_tuple) is tuple:
