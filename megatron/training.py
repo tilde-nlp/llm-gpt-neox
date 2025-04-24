@@ -621,7 +621,7 @@ def forward_step(
 
         # FIXME: debug print
         print_rank_0("Training 'normal' forward pass")
-        print_rank_0("Tokens: {}".format(tokens.size))
+        print_rank_0("Tokens: {}".format(tokens.size()))
         batch_size, seq_length = tokens.size()
         for b in range(batch_size):
             print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
