@@ -403,13 +403,15 @@ def _build_index_mappings(
                     cur_used = 0
                     for b in bins:
                         if cur_used + b["used"] >= TOKS_PER_SAMPLE:
-                            sample_idx.append([cur_ptr, 0])
-                            sample_lengths.append(cur_used)
+                            if cur_used > 0:
+                                sample_idx.append([cur_ptr, 0])
+                                sample_lengths.append(cur_used)
                             cur_ptr, cur_used = len(doc_idx), 0
                         doc_idx.extend(b["docs"])
                         cur_used += b["used"]
-                    sample_idx.append([cur_ptr, 0])  # close final merged bin
-                    sample_lengths.append(cur_used)
+                    if cur_used > 0:
+                        sample_idx.append([cur_ptr, 0])  # close final merged bin
+                        sample_lengths.append(cur_used)
                     bins.clear()
 
                 # --------------------------------------------------------------
