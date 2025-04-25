@@ -402,7 +402,7 @@ def _build_index_mappings(
                     cur_ptr = len(doc_idx)
                     cur_used = 0
                     for b in bins:
-                        if cur_used + b["used"] > TOKS_PER_SAMPLE:
+                        if cur_used + b["used"] >= TOKS_PER_SAMPLE:
                             sample_idx.append([cur_ptr, 0])
                             sample_lengths.append(cur_used)
                             cur_ptr, cur_used = len(doc_idx), 0
