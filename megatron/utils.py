@@ -125,7 +125,7 @@ def get_ltor_masks_and_position_ids(
     loss_mask = torch.ones_like(data, dtype=torch.float)
 
     # mask instruction blocks (add as many pairs as you need)
-    instr_pairs = [(111111, 111111)]
+    instr_pairs = [(7, 7)]
 
     tok = data  # (B, L)
     instr_mask = torch.zeros_like(tok, dtype=torch.bool)
@@ -155,6 +155,9 @@ def get_ltor_masks_and_position_ids(
     # end-of-document masking
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
+
+    # padding mask
+    loss_mask[data == 0] = 0.0
 
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
