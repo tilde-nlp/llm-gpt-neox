@@ -119,8 +119,40 @@ def get_ltor_masks_and_position_ids(
         # convert to bool and flip
         attention_mask = attention_mask < 0.5
 
-    # Loss mask.
-    loss_mask = torch.ones(data.size(), dtype=torch.float, device=data.device)
+    # ---------------------------------------------------------------
+    # Loss-mask:  1 ⇒ keep token in loss, 0 ⇒ ignore
+    # ---------------------------------------------------------------
+    loss_mask = torch.ones_like(data, dtype=torch.float)
+
+    # mask instruction blocks (add as many pairs as you need)
+    instr_pairs = [(111111, 111111)]
+
+    tok = data  # (B, L)
+    instr_mask = torch.zeros_like(tok, dtype=torch.bool)
+
+    for b_id, e_id in instr_pairs:
+        if b_id == e_id:
+            hits = (tok == b_id).cumsum(dim=1)  # 1,2,3…
+            inside = (hits & 1).bool()  # odd → between pair
+            unmatched = (hits[:, -1] & 1).bool()  # open at EOS?
+        else:
+            opens = (tok == b_id).cumsum(dim=1)
+            closes = (tok == e_id).cumsum(dim=1)
+            inside = opens > closes  # started but not closed
+            unmatched = (opens[:, -1] > closes[:, -1])
+
+        # union of: inside-region + both delimiters
+        instr_mask |= inside | (tok == b_id) | (tok == e_id)
+
+        # optional debug – costs ~0
+        if unmatched.any():
+            print_rank_0(
+                f"WARNING: {unmatched.sum().item()} sequence(s) end with an "
+                f"unclosed instruction (begin={b_id}, end={e_id})"
+            )
+    loss_mask[instr_mask] = 0.0  # hide all instruction tokens
+
+    # end-of-document masking
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
 
