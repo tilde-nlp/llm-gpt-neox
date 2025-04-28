@@ -374,7 +374,10 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
     )
 
     # combine loss masks from get_ltor_masks_and_position_ids with loss masks from data
+    print_rank_0(f"label_mask : {label_mask}")
+    print_rank_0(f"starting loss mask : {loss_mask}")
     loss_mask = label_mask.to(loss_mask.dtype) * loss_mask
+    print_rank_0(f"final loss mask : {loss_mask}")
     return tokens, labels, loss_mask, attention_mask, position_ids
 
 
