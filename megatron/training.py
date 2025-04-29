@@ -664,11 +664,13 @@ def forward_step(
                     vals = " ".join(slice_.to(dtype=torch.int32).tolist()) \
                         if slice_.dtype == torch.bool else " ".join(map(str, slice_.tolist()))
                     print_rank_0(f"[{start:4d}:{end - 1:4d}] {vals}")
+
+
         print_rank_0("Tokens: {}".format(tokens.size()))
         batch_size, seq_length = tokens.size()
-        for b in range(batch_size):
-            print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
-            print_cols_by_block(tokens[b], block=100, name="tokens")
+        # for b in range(batch_size):
+        #     print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
+        print_cols_by_block(tokens, block=100, name="tokens")
 
         # Sequential returns moe_losses, but this is not yet supported by pipe parallel
         maybe_tuple = model((tokens, position_ids, attention_mask), neox_args=neox_args)
