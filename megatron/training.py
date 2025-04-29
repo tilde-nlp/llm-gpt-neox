@@ -373,11 +373,31 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
         sliding_window_width=neox_args.sliding_window_width,
     )
 
+    def print_cols_by_block(t: torch.Tensor, block=100, name="tensor"):
+        """
+        Pretty-print a 2-D tensor shaped [batch, seq_len] in column chunks.
+        Assumes batch dimension <= 8; adapt if you ever need more.
+        """
+        if t.ndim != 2:
+            raise ValueError("Expect a 2-D tensor [batch, seq_len]")
+
+        t_cpu = t.detach().cpu()
+        b, seq_len = t_cpu.shape
+        for row in range(b):
+            print_rank_0(f"\n{name} – row {row} (len = {seq_len})")
+            for start in range(0, seq_len, block):
+                end = min(start + block, seq_len)
+                slice_ = t_cpu[row, start:end]
+                # remove commas so each line is narrow and grep-friendly
+                vals = " ".join(slice_.to(dtype=torch.int32).tolist()) \
+                    if slice_.dtype == torch.bool else " ".join(map(str, slice_.tolist()))
+                print_rank_0(f"[{start:4d}:{end - 1:4d}] {vals}")
+
     # combine loss masks from get_ltor_masks_and_position_ids with loss masks from data
     print_rank_0(f"label_mask : {label_mask}")
-    print_rank_0(f"starting loss mask : {loss_mask}")
+    print_cols_by_block(loss_mask, block=100, name="starting loss mask")
     loss_mask = label_mask.to(loss_mask.dtype) * loss_mask
-    print_rank_0(f"final loss mask : {loss_mask}")
+    print_cols_by_block(loss_mask, block=100, name="final loss mask")
     return tokens, labels, loss_mask, attention_mask, position_ids
 
 
@@ -624,10 +644,31 @@ def forward_step(
 
         # FIXME: debug print
         print_rank_0("Training 'normal' forward pass")
+
+        def print_cols_by_block(t: torch.Tensor, block=100, name="tensor"):
+            """
+            Pretty-print a 2-D tensor shaped [batch, seq_len] in column chunks.
+            Assumes batch dimension <= 8; adapt if you ever need more.
+            """
+            if t.ndim != 2:
+                raise ValueError("Expect a 2-D tensor [batch, seq_len]")
+
+            t_cpu = t.detach().cpu()
+            b, seq_len = t_cpu.shape
+            for row in range(b):
+                print_rank_0(f"\n{name} – row {row} (len = {seq_len})")
+                for start in range(0, seq_len, block):
+                    end = min(start + block, seq_len)
+                    slice_ = t_cpu[row, start:end]
+                    # remove commas so each line is narrow and grep-friendly
+                    vals = " ".join(slice_.to(dtype=torch.int32).tolist()) \
+                        if slice_.dtype == torch.bool else " ".join(map(str, slice_.tolist()))
+                    print_rank_0(f"[{start:4d}:{end - 1:4d}] {vals}")
         print_rank_0("Tokens: {}".format(tokens.size()))
         batch_size, seq_length = tokens.size()
         for b in range(batch_size):
             print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
+            print_cols_by_block(tokens[b], block=100, name="tokens")
 
         # Sequential returns moe_losses, but this is not yet supported by pipe parallel
         maybe_tuple = model((tokens, position_ids, attention_mask), neox_args=neox_args)
