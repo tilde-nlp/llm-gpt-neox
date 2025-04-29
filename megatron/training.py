@@ -395,9 +395,9 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
 
     # combine loss masks from get_ltor_masks_and_position_ids with loss masks from data
     print_rank_0(f"label_mask : {label_mask}")
-    print_cols_by_block(loss_mask, block=100, name="starting loss mask")
+    #print_cols_by_block(loss_mask, block=100, name="starting loss mask")
     loss_mask = label_mask.to(loss_mask.dtype) * loss_mask
-    print_cols_by_block(loss_mask, block=100, name="final loss mask")
+    #print_cols_by_block(loss_mask, block=100, name="final loss mask")
     return tokens, labels, loss_mask, attention_mask, position_ids
 
 
@@ -670,7 +670,7 @@ def forward_step(
         batch_size, seq_length = tokens.size()
         # for b in range(batch_size):
         #     print_rank_0(f"Batch {b}, tokens: {tokens[b]}")
-        print_cols_by_block(tokens, block=100, name="tokens")
+        #print_cols_by_block(tokens, block=100, name="tokens")
 
         # Sequential returns moe_losses, but this is not yet supported by pipe parallel
         maybe_tuple = model((tokens, position_ids, attention_mask), neox_args=neox_args)
