@@ -164,11 +164,11 @@ def get_ltor_masks_and_position_ids(
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
 
-    # FIXME: remove
+    # FIXME: remove?
     loss_mask[data == 8] = 0.0
 
     # padding mask
-    #loss_mask[data == 0] = 0.0
+    loss_mask[data == 0] = 0.0
 
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
