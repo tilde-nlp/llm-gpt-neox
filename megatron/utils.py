@@ -170,6 +170,9 @@ def get_ltor_masks_and_position_ids(
     # padding mask
     loss_mask[data == 0] = 0.0
 
+    # mask everything
+    loss_mask = torch.zeros_like(loss_mask)
+
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
     position_ids = position_ids.unsqueeze(0).expand_as(data)
