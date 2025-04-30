@@ -398,10 +398,6 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
     shifted_mask[:, :-1] = loss_mask[:, 1:]
     loss_mask = shifted_mask * label_mask
 
-    # FIXME: remove
-    # disable loss mask
-    loss_mask = torch.ones_like(loss_mask)
-
     # combine loss masks from get_ltor_masks_and_position_ids with loss masks from data
     print_rank_0(f"label_mask : {label_mask}")
     #print_cols_by_block(loss_mask, block=100, name="starting loss mask")
