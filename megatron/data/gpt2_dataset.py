@@ -375,9 +375,9 @@ def _build_index_mappings(
                             doc_i = (doc_i + 1) % len(documents)
                             continue
                     # Just in case we have bad data in the loop...
-                    if np.all(label_dataset.get(doc_i)[:seq_length] == -100):
-                        doc_i = (doc_i + 1) % len(documents)
-                        continue
+                    # if np.all(label_dataset.get(doc_i)[:seq_length] == -100):
+                    #     doc_i = (doc_i + 1) % len(documents)
+                    #     continue
                     doc_idx.append(doc_i)
                     doc_i = (doc_i + 1) % len(documents)
                 np.save(doc_idx_filename, doc_idx, allow_pickle=True)
