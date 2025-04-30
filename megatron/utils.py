@@ -164,6 +164,9 @@ def get_ltor_masks_and_position_ids(
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
 
+    # FIXME: remove
+    loss_mask[data == 8] = 0.0
+
     # padding mask
     loss_mask[data == 0] = 0.0
 
