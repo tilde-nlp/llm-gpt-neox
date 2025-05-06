@@ -394,9 +394,9 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
                 print_rank_0(f"[{start:4d}:{end - 1:4d}] {vals}")
 
     # FIXME: ?????
-    shifted_mask = torch.zeros_like(loss_mask)
-    shifted_mask[:, :-1] = loss_mask[:, 1:]
-    loss_mask = shifted_mask * label_mask
+    # shifted_mask = torch.zeros_like(loss_mask)
+    # shifted_mask[:, :-1] = loss_mask[:, 1:]
+    # loss_mask = shifted_mask * label_mask
 
     # combine loss masks from get_ltor_masks_and_position_ids with loss masks from data
     print_rank_0(f"label_mask : {label_mask}")
