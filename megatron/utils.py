@@ -152,10 +152,10 @@ def get_ltor_masks_and_position_ids(
             )
 
     # 3) NEW: mask **only** the opening tokens of ID 8
-    # open_id = 8
-    # hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
-    # open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
-    # instr_mask |= open8
+    open_id = 8
+    hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
+    open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
+    instr_mask |= open8
 
 
     loss_mask[instr_mask] = 0.0  # hide all instruction tokens
