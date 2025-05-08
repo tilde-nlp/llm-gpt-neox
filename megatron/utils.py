@@ -151,11 +151,11 @@ def get_ltor_masks_and_position_ids(
                 f"unclosed instruction (begin={b_id}, end={e_id})"
             )
 
-    # 3) NEW: mask **only** the opening tokens of ID 8
-    open_id = 8
-    hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
-    open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
-    instr_mask |= open8
+    # # 3) NEW: mask **only** the opening tokens of ID 8
+    # open_id = 8
+    # hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
+    # open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
+    # instr_mask |= open8
 
 
     loss_mask[instr_mask] = 0.0  # hide all instruction tokens
@@ -164,8 +164,8 @@ def get_ltor_masks_and_position_ids(
     if eod_mask_loss:
         loss_mask[data == eod_token] = 0.0
 
-    # FIXME: remove?
-    loss_mask[data == 8] = 0.0
+    # # FIXME: remove?
+    # loss_mask[data == 8] = 0.0
 
     # padding mask
     loss_mask[data == 0] = 0.0
