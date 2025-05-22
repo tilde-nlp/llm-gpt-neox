@@ -84,6 +84,32 @@ Output (~ 5-10 min) :
 
 **/scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin** should then be passed to the training script
 
+### Append EOD
+
+If it was not done during tokenization, then append EOD token to each sample of a merged datapack.
+
+From repo root:
+```
+source purge.sh
+srun --job-name=test-ss --account=project_465001281 --partition=dev-g --gpus-per-node=8 --ntasks-per-node=1 --cpus-per-task=56 --mem-per-gpu=60GB --time=03:00:00 --nodes=1 singularity shell /scratch/project_465001281/containers/rocm603_inference.sif
+$WITH_CONDA
+append_eod_bin.py /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/XX.bin
+```
+
+Output (~ 40min - 1h):
+- /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/eod_XX.bin
+- /scratch/project_465001281/tokenized/final_data_sliced/merged/XX/eod_XX.idx
+
+**/scratch/project_465001281/tokenized/final_data_sliced/merged/XX/eod_XX.bin** should then be passed to the training script
+
+### Estimate num iterations for phase XX
+
+To estimate what value to use for *train_iters* for all merged phases:
+
+```bash
+bash iters_per_datapack.sh \
+    /scratch/project_465001281/tokenized/final_data_sliced/merged
+```
 
 ### Estimate num iterations for phase XX
 
