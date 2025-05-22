@@ -111,15 +111,6 @@ bash iters_per_datapack.sh \
     /scratch/project_465001281/tokenized/final_data_sliced/merged
 ```
 
-### Estimate num iterations for phase XX
-
-To estimate what value to use for *train_iters* for all merged phases:
-
-```bash
-bash iters_per_datapack.sh \
-    /scratch/project_465001281/tokenized/final_data_sliced/merged
-```
-
 Output:
 ```
 /scratch/project_465001281/tokenized/final_data_sliced/merged/U1_1/: 29789.3
@@ -128,6 +119,8 @@ Output:
 ```
 
 ***NOTE***: estimation is hardcoded for 8192 * 576 (seq_len * batch_size) - this will not work for different seq_len or batch sizes.
+
+***NOTE***: this counts all bin files in a subfolder, so if append EOD was run then the iteration count will show double the real amount
 
 
 ### Create phase train folder & config
