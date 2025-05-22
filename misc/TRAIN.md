@@ -161,6 +161,35 @@ CONFIG_FILE="$NEOX_DIR/launch_scripts/final_train/XX/30B_SOTA_XX.yml"
 OUTPUT_CSV_FOLDER="/project/project_465001281/IP/llm-gpt-neox/launch_scripts/final_train_v2"
 ```
 
+### Average Checkpoint's RMSnorms for each of the MP shards
+We suspect that because of some quirks in NeoX, RMS norms might slowly diverge across MP shards. To mitigate that, we periodically average their values.
+```bash
+cd /scratch/project_465001281/MK/checkpoints/final_train_v2
+chpt=$(cat latest)
+mv $chpt _original_${chpt}_
+echo "Your source file" /scratch/project_465001281/MK/checkpoints/final_train_v/_original_${chpt}_
+echo "Your target file" /scratch/project_465001281/MK/checkpoints/final_train_v/$chpt
+```
+You will have to copy these file paths manually, as srun won't have access to the variables used on the login node.
+Then run srun and wait for the GPU node to be allocated. To check that the node is started, type ```ls``` to see if something gets listed. 
+```bash
+module purge
+module use /appl/local/training/modules/AI-20240529/
+module load singularity-userfilesystems
+srun --job-name=test --account=project_465001281 --partition=dev-g --gpus-per-node=8 --ntasks-per-node=1 \
+    --cpus-per-task=7 --mem-per-gpu=60G --time=2:00:00 --nodes=1 \
+    singularity shell /scratch/project_465001281/IP/rocm603_flash.sif
+ls
+```
+```bash
+$WITH_CONDA
+python3  /project/project_465001281/IP/llm-gpt-neox/tools/ckpts/norm_avg.py \
+         --input-folder [YOUR SOURCE FILE]  \
+         --output-folder [YOUR TARGET FILE]
+```
+Now wait for the script to say it is done. It might take a while, as copying large files takes time. 
+Then close the node by quickly Ctrl+C serveral times. 
+
 ### Begin training
 
 ```bash
