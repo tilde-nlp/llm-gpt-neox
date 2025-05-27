@@ -26,18 +26,18 @@ class AnnealingLR(object):
     """Anneals the learning rate."""
 
     def __init__(
-        self,
-        optimizer,
-        start_lr,
-        warmup_iter,
-        total_iters,
-        decay_style,
-        last_iter,
-        min_lr=0.0,
-        use_checkpoint_lr_scheduler=True,
-        override_lr_scheduler=False,
-        use_mup=False,
-        neox_args=None,
+            self,
+            optimizer,
+            start_lr,
+            warmup_iter,
+            total_iters,
+            decay_style,
+            last_iter,
+            min_lr=0.0,
+            use_checkpoint_lr_scheduler=True,
+            override_lr_scheduler=False,
+            use_mup=False,
+            neox_args=None,
     ):
 
         # Class values.
@@ -59,7 +59,7 @@ class AnnealingLR(object):
             )
         # Set the learning rate
         # FIXME: tbf I have no idea if this helps at all
-        self.unset = False # dont hack the iterations on init
+        self.unset = False  # dont hack the iterations on init
         self.step(self.num_iters)
         self.unset = True
 
@@ -77,7 +77,7 @@ class AnnealingLR(object):
         if self.neox_args and self.warmup_iter > 0 and self.unset:
             if self.neox_args.iteration_offset:
                 num_iters_ = num_iters_ - self.neox_args.iteration_offset
-                assert(num_iters_ >= 0)
+                assert (num_iters_ >= 0)
 
         print_rank_0("--------- LR schedule ---------")
         print_rank_0("------- > num_iters (faked): {}".format(num_iters_))
@@ -96,14 +96,33 @@ class AnnealingLR(object):
         elif self.decay_style == "cosine":
             end_iter_ = self.end_iter - self.warmup_iter
             lr = self.min_lr + (
-                (self.start_lr - self.min_lr)
-                / 2.0
-                * (math.cos(math.pi * num_iters_ / end_iter_) + 1)
+                    (self.start_lr - self.min_lr)
+                    / 2.0
+                    * (math.cos(math.pi * num_iters_ / end_iter_) + 1)
             )
         elif self.decay_style == "exponential":
             # exp(-0.693) = 1/2
             end_iter = self.end_iter - self.warmup_iter
             lr = self.start_lr * math.exp(-0.693 * num_iters_ / end_iter)
+
+        elif self.decay_style == "sqrt":
+            # TODO: pass this as args
+            cd_start_iter = 194290
+            cd_end_iter = 194490
+            max_cd_lr = 1.6*10**(-4)
+            min_cd_lr = 1.6*10**(-6)
+            # TODO: need global number here
+            print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
+            print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
+            print_rank_0("------- > num_iters: {}".format(num_iters_))
+
+            if num_iters_ > cd_start_iter:
+
+                lr = math.log(1 - math.sqrt(
+                    max_cd_lr - (max_cd_lr - min_cd_lr) * (
+                                (num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter))))
+            else:
+                lr = max_cd_lr
         else:
             lr = self.start_lr
         return max(lr, self.min_lr)
