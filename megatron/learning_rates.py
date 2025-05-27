@@ -125,9 +125,9 @@ class AnnealingLR(object):
 
             if global_num_iters_ > cd_start_iter:
 
-                lr = math.log(1 - math.sqrt(
+                lr = 1 - math.sqrt(
                     max_cd_lr - (max_cd_lr - min_cd_lr) * (
-                                (global_num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter))))
+                                (global_num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter)))
             else:
                 lr = max_cd_lr
         else:
