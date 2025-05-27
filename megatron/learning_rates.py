@@ -114,13 +114,20 @@ class AnnealingLR(object):
             # TODO: need global number here
             print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
             print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
-            print_rank_0("------- > num_iters: {}".format(num_iters_))
+            print_rank_0("------- > num_iters (local): {}".format(num_iters_))
+            if self.neox_args.iteration_offset:
+                print_rank_0("------- > num_iters (global): {}".format(num_iters_ + self.neox_args.iteration_offset))
 
-            if num_iters_ > cd_start_iter:
+            if self.neox_args.iteration_offset:
+                global_num_iters_ = num_iters_ + self.neox_args.iteration_offset
+            else:
+                global_num_iters_ = num_iters_
+
+            if global_num_iters_ > cd_start_iter:
 
                 lr = math.log(1 - math.sqrt(
                     max_cd_lr - (max_cd_lr - min_cd_lr) * (
-                                (num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter))))
+                                (global_num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter))))
             else:
                 lr = max_cd_lr
         else:
