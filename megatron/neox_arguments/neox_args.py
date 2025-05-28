@@ -581,9 +581,9 @@ class NeoXArgsLRScheduler(NeoXArgsTemplate):
     LR Scheduler Arguments
     """
 
-    lr_decay_style: Literal["constant", "linear", "cosine", "exponential"] = "linear"
+    lr_decay_style: Literal["constant", "linear", "cosine", "exponential", "sqrt"] = "linear"
     """
-    Learning rate decay function. Choose from 'constant', 'linear', 'cosine', 'exponential'.
+    Learning rate decay function. Choose from 'constant', 'linear', 'cosine', 'exponential', 'sqrt'
     """
 
     lr_decay_iters: int = None

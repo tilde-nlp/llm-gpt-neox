@@ -104,6 +104,31 @@ class AnnealingLR(object):
             # exp(-0.693) = 1/2
             end_iter = self.end_iter - self.warmup_iter
             lr = self.start_lr * math.exp(-0.693 * num_iters_ / end_iter)
+        elif self.decay_style == "sqrt":
+            # TODO: pass this as args
+            cd_start_iter = 80000
+            cd_end_iter = 100000
+            max_cd_lr = 3*10**(-4)
+            min_cd_lr = max_cd_lr*0.05
+
+            print_rank_0("------- > Using 'sqrt' learning rate decay")
+            print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
+            print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
+            print_rank_0("------- > num_iters (local): {}".format(num_iters_))
+            if self.neox_args.iteration_offset:
+                print_rank_0("------- > num_iters (global): {}".format(num_iters_ + self.neox_args.iteration_offset))
+
+            if self.neox_args.iteration_offset:
+                global_num_iters_ = num_iters_ + self.neox_args.iteration_offset
+            else:
+                global_num_iters_ = num_iters_
+
+            if global_num_iters_ > cd_start_iter:
+
+                lr  = max_cd_lr - (max_cd_lr - min_cd_lr) * math.sqrt(
+                                (global_num_iters_ - cd_start_iter) / (cd_end_iter - cd_start_iter))
+            else:
+                lr = max_cd_lr
         else:
             lr = self.start_lr
         return max(lr, self.min_lr)
