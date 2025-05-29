@@ -113,15 +113,12 @@ class AnnealingLR(object):
 
             print_rank_0("------- > Using 'sqrt' learning rate decay")
             print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
-            print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
+            print_rank_0("------- > cd_end_iter: {}".format(cd_end_iter))
             print_rank_0("------- > num_iters (local): {}".format(num_iters_))
-            if self.neox_args.iteration_offset:
-                print_rank_0("------- > num_iters (global): {}".format(num_iters_ + self.neox_args.iteration_offset))
+            # if self.neox_args.iteration_offset:
+            #     print_rank_0("------- > num_iters (global): {}".format(num_iters_ + self.neox_args.iteration_offset))
 
-            if self.neox_args.iteration_offset:
-                global_num_iters_ = num_iters_ + self.neox_args.iteration_offset
-            else:
-                global_num_iters_ = num_iters_
+            global_num_iters_ = num_iters_
 
             if global_num_iters_ > cd_start_iter:
 
