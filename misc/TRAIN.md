@@ -186,8 +186,8 @@ We suspect that because of some quirks in NeoX, RMS norms might slowly diverge a
 cd /scratch/project_465001281/MK/checkpoints/final_train_v2
 chpt=$(cat latest)
 mv $chpt _original_${chpt}_
-echo "Your source file" /scratch/project_465001281/MK/checkpoints/final_train_v/_original_${chpt}_
-echo "Your target file" /scratch/project_465001281/MK/checkpoints/final_train_v/$chpt
+echo "Your source file" /scratch/project_465001281/MK/checkpoints/final_train_v2/_original_${chpt}_
+echo "Your target file" /scratch/project_465001281/MK/checkpoints/final_train_v2/$chpt
 ```
 You will have to copy these file paths manually, as srun won't have access to the variables used on the login node.
 Then run srun and wait for the GPU node to be allocated. To check that the node is started, type ```ls``` to see if something gets listed. 
