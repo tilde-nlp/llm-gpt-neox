@@ -330,12 +330,12 @@ def _build_index_mappings(
                             continue
                     # In theory if we don't allow chopped we should be able to skip it, but the warm fuzzies I get
                     # from this are worth the extra bool check
-                    if np.all(pos_label_dataset.get(doc_i)[:seq_length] == -100):
-                        doc_i = (doc_i + 1) % len(documents)
-                        continue
-                    if np.all(neg_label_dataset.get(doc_i)[:seq_length] == -100):
-                        doc_i = (doc_i + 1) % len(documents)
-                        continue
+                    #if np.all(pos_label_dataset.get(doc_i)[:seq_length] == -100):
+                    #    doc_i = (doc_i + 1) % len(documents)
+                    #    continue
+                    #if np.all(neg_label_dataset.get(doc_i)[:seq_length] == -100):
+                    #    doc_i = (doc_i + 1) % len(documents)
+                    #    continue
                     doc_idx.append(doc_i)
                     doc_i = (doc_i + 1) % len(documents)
                 np.save(doc_idx_filename, doc_idx, allow_pickle=True)
