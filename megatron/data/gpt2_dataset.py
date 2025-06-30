@@ -155,16 +155,18 @@ class GPT2Dataset(torch.utils.data.Dataset):
                             sample_list.append(dataset.get(self.doc_idx[i]))
                             sample_lengths.append(len(sample_list[-1]))
                     # And finally add the relevant portion of last document.
-                    if n == rw_indx:
-                        rw = dataset.get(self.doc_idx[doc_index_l])
-                        sample_list.append(
-                            np.array([rw[0] for _ in range(sample_lengths.pop(0))])
-                        )
-                    else:
-                        sample_list.append(
-                            dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1)
-                        )
-                        sample_lengths.append(len(sample_list[-1]))
+                    # TODO: this needs to be hidden under  if offset_l > 0 :
+                    if offset_l > 0:
+                        if n == rw_indx:
+                            rw = dataset.get(self.doc_idx[doc_index_l])
+                            sample_list.append(
+                                np.array([rw[0] for _ in range(sample_lengths.pop(0))])
+                            )
+                        else:
+                            sample_list.append(
+                                dataset.get(self.doc_idx[doc_index_l], length=offset_l + 1)
+                            )
+                            sample_lengths.append(len(sample_list[-1]))
                     samples.append(np.concatenate(sample_list))
             for i in range(len(samples)):
                 mask = (self.label_dataset is not None) and (i == 1)
@@ -301,6 +303,7 @@ def _build_index_mappings(
                 np_rng.shuffle(shuffle_idx)
                 sample_idx = []
                 doc_idx = []
+                sample_lengths = []  # <-- NEW
                 # Iterate over files until we have enough samples.
                 temp_shuffle_idx = np.arange(len(documents))
                 np_rng.shuffle(temp_shuffle_idx)
@@ -329,6 +332,7 @@ def _build_index_mappings(
                         running_length += doc_length
                     else:
                         if running_length + doc_length > (seq_length + 1):
+                            sample_lengths.append(running_length)  # <-- NEW
                             running_length = doc_length
                             sample_idx.append(np.array([len(doc_idx), 0]))
                         else:
@@ -338,7 +342,20 @@ def _build_index_mappings(
                     if curr_shuffle_idx == len(documents):
                         curr_shuffle_idx = 0
                         np_rng.shuffle(temp_shuffle_idx)
+                sample_lengths.append(running_length)              # <-- NEW
                 sample_idx.append(np.array([len(doc_idx), 0]))
+
+                # ----------------------  metrics  --------------------------
+                requested_samples = num_samples
+                generated_samples = len(sample_idx) - 1  # last row is sentinel-like
+                generated_tokens_cap = generated_samples * (seq_length + 1)
+                true_tokens = sum(sample_lengths)
+                packing_eff_pct = 100.0 * true_tokens / generated_tokens_cap
+                print_rank_0("=== overflow packing summary ===")
+                print_rank_0(f" > requested samples      : {requested_samples}")
+                print_rank_0(f" > generated samples      : {generated_samples}")
+                print_rank_0(f" > packing efficiency     : {packing_eff_pct:6.2f} % (non-pad tokens)")
+
                 np.save(doc_idx_filename, doc_idx, allow_pickle=True)
                 np.save(sample_idx_filename, sample_idx, allow_pickle=True)
                 np.save(shuffle_idx_filename, shuffle_idx, allow_pickle=True)
@@ -358,9 +375,9 @@ def _build_index_mappings(
                             doc_i = (doc_i + 1) % len(documents)
                             continue
                     # Just in case we have bad data in the loop...
-                    if np.all(label_dataset.get(doc_i)[:seq_length] == -100):
-                        doc_i = (doc_i + 1) % len(documents)
-                        continue
+                    # if np.all(label_dataset.get(doc_i)[:seq_length] == -100):
+                    #     doc_i = (doc_i + 1) % len(documents)
+                    #     continue
                     doc_idx.append(doc_i)
                     doc_i = (doc_i + 1) % len(documents)
                 np.save(doc_idx_filename, doc_idx, allow_pickle=True)
@@ -385,14 +402,16 @@ def _build_index_mappings(
                     cur_ptr = len(doc_idx)
                     cur_used = 0
                     for b in bins:
-                        if cur_used + b["used"] > TOKS_PER_SAMPLE:
-                            sample_idx.append([cur_ptr, 0])
-                            sample_lengths.append(cur_used)
+                        if cur_used + b["used"] >= TOKS_PER_SAMPLE:
+                            if cur_used > 0:
+                                sample_idx.append([cur_ptr, 0])
+                                sample_lengths.append(cur_used)
                             cur_ptr, cur_used = len(doc_idx), 0
                         doc_idx.extend(b["docs"])
                         cur_used += b["used"]
-                    sample_idx.append([cur_ptr, 0])  # close final merged bin
-                    sample_lengths.append(cur_used)
+                    if cur_used > 0:
+                        sample_idx.append([cur_ptr, 0])  # close final merged bin
+                        sample_lengths.append(cur_used)
                     bins.clear()
 
                 # --------------------------------------------------------------
