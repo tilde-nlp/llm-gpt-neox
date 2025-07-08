@@ -402,6 +402,11 @@ def load_checkpoint(
             load_module_strict=neox_args.train_impl != "rm",
         )
 
+        # respect values passed in the config ....
+        print_rank_0(f"Overwriting ckpt grad clip of {model.optimizer.clip_grad} to config value of {neox_args.gradient_clipping}")
+        model.optimizer.clip_grad = neox_args.gradient_clipping
+        print_rank_0(f"Value successfully set to {model.optimizer.clip_grad}")
+
         if checkpoint_name is None:
             # if an iteration is specified, we want to raise an error here rather than
             # continuing silently, since we are trying to load a specific checkpoint
