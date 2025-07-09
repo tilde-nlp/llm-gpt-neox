@@ -2,6 +2,7 @@ import sys
 import json
 import numpy as np
 import matplotlib
+import matplotlib.patches as mpatches
 from matplotlib import pyplot as plt
 
 
@@ -46,6 +47,11 @@ def plot_data_distribution_long_short_separate(data, scale_to_b=10 ** 9):
     total_short = u1_short + u2_short + n_short + u3_short
     total_long = u1_long + u2_long + n_long + u3_long
 
+    total_short_and_e = total_short + ext_short
+    total_long_and_e = total_long + ext_long
+
+    total_sum_and_e = total_sum + sum_ext
+
     # Setup figure with 3 subplots
     fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
 
@@ -68,7 +74,32 @@ def plot_data_distribution_long_short_separate(data, scale_to_b=10 ** 9):
                 )
 
         ax.set_title(title)
-        ax.legend()
+        # Compute total tokens per language
+        total_tokens = np.array(short) + np.array(long)
+
+        # Compute total tokens per language
+        total_tokens = np.array(short) + np.array(long)
+
+        # Sort categories by total tokens (descending order)
+        sorted_indices = np.argsort(total_tokens)[::-1]  # Sort in descending order
+        sorted_categories = [categories[i] for i in sorted_indices]
+        sorted_totals = [total_tokens[i] for i in sorted_indices]
+
+        # Create custom legend entries with sorted total tokens
+        legend_labels = [f"{sorted_categories[i]}: {sorted_totals[i]:.1f}B" for i in range(len(sorted_categories))]
+
+        # Create a proper legend
+        handles = [
+            mpatches.Patch(facecolor=color, label=label_short),  # ✅ Keep Total_Short correct
+            mpatches.Patch(facecolor=color, hatch='///', edgecolor=hatch_color, label=label_long),
+            # ✅ Keep Total_Long correct
+        ]
+
+        # Add sorted total tokens per language to the legend
+        for label in legend_labels:
+            handles.append(mpatches.Patch(facecolor='none', label=label))  # Invisible patches for formatting
+
+        ax.legend(handles=handles, loc='upper left', fontsize=10, frameon=True)
 
     # Plot U1
     title1 = f"U1: {sum1:.0f}B [{100 * sum1 / total_sum:.2f}%]"
@@ -165,6 +196,10 @@ def plot_data_distribution_long_short_separate(data, scale_to_b=10 ** 9):
     # Separate TOTAL Plot (All phases, Short and Long separated)
     title4 = f"Total: {np.sum(total_short):.0f}B Short + {np.sum(total_long):.0f}B Long [{100 * np.sum(total_short) / total_sum:.2f}% Short, {100 * np.sum(total_long) / total_sum:.2f}% Long]"
     create_separate_plot(categories, total_short, total_long, 'peachpuff', '#D2691E', 'Total_Short', 'Total_Long', title4)
+
+    # Separate TOTAL Plot (All phases, Short and Long separated)
+    title4 = f"Total: {np.sum(total_short_and_e):.0f}B Short + {np.sum(total_long_and_e):.0f}B Long [{100 * np.sum(total_short_and_e) / total_sum_and_e:.2f}% Short, {100 * np.sum(total_long_and_e) / total_sum_and_e:.2f}% Long]  Σ: {total_sum_and_e:.0f} B"
+    create_separate_plot(categories, total_short_and_e, total_long_and_e, 'peachpuff', '#D2691E', 'Total_Short', 'Total_Long', title4)
 
 
 # this is actually human written, as evidenced by lack of comments

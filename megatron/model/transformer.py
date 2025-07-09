@@ -451,6 +451,7 @@ class ParallelSelfAttention(nn.Module):
                 max_seq_len=neox_args.seq_length,
                 precision=neox_args.params_dtype,
                 save_inv_freqs=neox_args.rotary_save_freqs_buffer,
+                neox_args=neox_args
             )
         else:
             self.rotary_emb = None
