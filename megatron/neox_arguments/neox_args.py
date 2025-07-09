@@ -383,6 +383,55 @@ class NeoXArgsModel(NeoXArgsTemplate):
     with GPT-NeoX checkpoints that were trained with this flag.
     """
 
+    yarn: bool = False
+    """
+    If set to True, and using pos_emb: "rotary" then will use YaRN positional embeddings.
+    Activates the parameters yarn_beta_slow, yarn_beta_fast, yarn_factor, yarn_attention_factor and
+    yarn_original_max_position_embeddings.
+    Defaults to False.
+    """
+
+    yarn_beta_slow: float = 1.0
+    """
+    The alpha parameter from they YaRN paper.
+    Frequencies that make less than yarn_beta_slow revolutions over yarn_original_max_position_embeddings will be
+    stretched to the maximum extent.
+    Defaults to 1.0.
+    """
+
+    yarn_beta_fast: float = 32.0
+    """
+    The beta parameter from the YaRN paper.
+    Frequencies that make more than yarn_beta_fast revolutions over yarn_original_max_position_embeddings will not
+    bet stretched.
+    Defaults to 32.0.
+    """
+
+    yarn_factor: Optional[float] = None
+    """
+    The s parameter from YaRN paper.
+    Setting this parameter will override the value that gets calculated from yarn_original_max_position_embeddings and
+    max_position_embeddings.
+    This parameter should be set to roughly max_position_embeddings / yarn_original_max_position_embeddings.
+    By default it's inferred from max_position_embeddings and yarn_original_max_position_embeddings.
+    """
+
+    yarn_attention_factor: float = 1.0
+    """
+    The attention pre softmax logits are multiplied by (0.1 * ln(yarn_factor) * yarn_attention_factor + 1.0) ** 2.
+    You should probably leave this parameter alone, unless you know what you're doing.
+    Defaults to 1.0
+    """
+
+    yarn_original_max_position_embeddings: int = None
+    """
+    Relevant when using YaRN.
+    The context length that you used pre any context extension.
+    That is to say when you were just training with RoPE.
+    No default, you have to define this if you use YaRN.
+    """
+
+
     init_method: Literal[
         "normal",
         "scaled_normal",

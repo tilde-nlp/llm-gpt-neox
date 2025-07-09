@@ -37,11 +37,9 @@ class SinusoidalPositionalEmbedding(torch.nn.Module):
 
 class RotaryEmbedding(torch.nn.Module):
     def __init__(
-        self, dim, max_seq_len, base=10000, precision=torch.half, save_inv_freqs=False
+        self, dim, max_seq_len, neox_args, base=10000, precision=torch.half, save_inv_freqs=False
     ):
         super().__init__()
-        inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
-        self.register_buffer("inv_freq", inv_freq, persistent=save_inv_freqs)
         self.seq_len_cached = None
         self.cos_cached = None
         self.sin_cached = None
@@ -49,6 +47,24 @@ class RotaryEmbedding(torch.nn.Module):
         self.max_seq_len = max_seq_len
         self.base = base
         self.dim = dim
+
+        # Fetch and save yarn parameters.
+        self.yarn = neox_args.yarn
+        if self.yarn:
+            self.beta_fast = neox_args.yarn_beta_fast
+            self.beta_slow = neox_args.yarn_beta_slow
+
+            if neox_args.yarn_original_max_position_embeddings is None:
+                raise ValueError("You're using YaRN but you didn't define yarn_original_max_position_embeddings. Define it please.")
+            self.original_max_position_embeddings = neox_args.yarn_original_max_position_embeddings
+
+            if neox_args.yarn_factor is not None:
+                self.factor = neox_args.yarn_factor
+            else:
+                self.factor = neox_args.sequence_length / neox_args.yarn_original_max_position_embeddings
+
+            self.attention_factor = neox_args.yarn_attention_factor
+
 
         # precompute cos_cached, sin_cached in fp32
         cos_cached, sin_cached, inv_freq = self._prepare_cache(
@@ -62,6 +78,86 @@ class RotaryEmbedding(torch.nn.Module):
     def _prepare_cache(self, seq_len, precision, base):
         # precompute cos_cached, sin_cached in fp32
         inv_freq = 1.0 / (base ** (torch.arange(0, self.dim, 2).float() / self.dim))
+        # Starts with high frequencies goes to low frequencies.
+        # Btw these are definitely frequencies and not inverse frequencies (periods), just making that clear.
+
+        if self.yarn:
+            # I'm getting brain cancer.
+            # Everyone's implementing the gamma factor calculation differently from how it's described in the YaRN paper.
+            # To increase chance of compatibility, I'll also implement it incorrectly.
+
+            def _yarn_find_correction_dim(num_rotations: int,
+                                          dim: int,
+                                          base: float = 10000,
+                                          max_position_embeddings: int = 2048) -> float:
+                """
+                I suppose - this function assumes continuity of rope embedding positions.
+                And returns position in embeddings that given a certain base gives the appropriate amount of rotations.
+                The math seems to check out.
+                """
+                return (dim * math.log(max_position_embeddings /
+                                       (num_rotations * 2 * math.pi))) / (2 *
+                                                                          math.log(base))
+            def _yarn_find_correction_range(
+                    low_rot: int,
+                    high_rot: int,
+                    dim: int,
+                    base: float = 10000,
+                    max_position_embeddings: int = 2048):
+                """
+                The stupid way everyone detects the range, when there's not really a reason to detect the range in the
+                first place.
+
+                The function computes the locations of the embeddings of the betas under a continues-location assumption.
+                Then rounds them down and up.
+                low_rot - stupid, but corresponds to the high frequencies, so you actually gotta input the high rotation
+                number for this one.
+                Vice versa for high_rot.
+                """
+                low = math.floor(
+                    _yarn_find_correction_dim(low_rot, dim, base, max_position_embeddings))
+                # ^ This represents the low embedding index that corresponds to high frequency.
+                high = math.ceil(
+                    _yarn_find_correction_dim(high_rot, dim, base,
+                                              max_position_embeddings))
+                # ^ Vice versa
+                return max(low, 0), min(high, dim - 1)
+
+            def _yarn_linear_ramp_mask(low: float, high: float, dim: int) -> torch.Tensor:
+                """
+                The stupid way everyone calculates the ramp mask, based on dimension rather than r (repetitions)
+                for no reason.
+
+                Just a linear interpolation from low to high.
+                """
+                if low == high:
+                    high += 0.001  # Prevent singularity
+                linear_func = (torch.arange(dim) - low) / (high - low)
+                ramp_func = torch.clamp(linear_func, 0.0, 1.0)
+                return ramp_func
+
+            # Add handling if yarn is not activated.
+            pass
+
+            low, high = _yarn_find_correction_range(low_rot=self.beta_fast,
+                                                    high_rot=self.beta_slow,
+                                                    dim=self.dim,
+                                                    base=self.base,
+                                                    max_position_embeddings=self.original_max_position_embeddings)
+
+            ramp = _yarn_linear_ramp_mask(low, high,
+                                          self.dim // 2)  # [hs/2]
+            # Ramp starts at 0.0, then goes linear, then finishes at 1.0.
+            # 0.0 is used for high frequencies, 1.0 for low frequencies.
+
+            inv_freq = inv_freq * (1 - ramp) + inv_freq / self.factor * ramp  # [hs]
+            # We use normal frequencies for where ramp is 0.
+            # I.e. we use normal frequencies for where position is low.
+            # I.e. we use normal frequencies for where the frequences are high.
+            # I.e. we don't touch high frequencies.
+            # We use slow frequencies for where frequencies are low.
+            # i.e. we stretch out low frequencies.
+
 
         t = torch.arange(seq_len).type_as(inv_freq)
         freqs = torch.einsum("i,j->ij", t, inv_freq)
@@ -69,6 +165,14 @@ class RotaryEmbedding(torch.nn.Module):
 
         cos_cached = emb.cos()[:, None, None, :]
         sin_cached = emb.sin()[:, None, None, :]
+
+        # Under YaRN gotta adjust the ~attention entropy.
+        if self.yarn:
+            # Now intuitively it feels like one should scale up the embeddings, that will reduce entropy of the
+            # attention.
+            t = 0.1 * self.attention_factor * math.log(self.factor) + 1
+            cos_cached*= t
+            sin_cached*= t
 
         return (
             cos_cached.to(precision),
