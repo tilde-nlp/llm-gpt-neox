@@ -1,0 +1,23 @@
+[
+  {
+    "needle_raw": "The secret key is 954834. ",
+    "answer_prompt_raw": "The secret key is ",
+    "answer_raw": "954834"
+  },
+  {
+    "needle_raw": "The best place to get a pianist is Danny's Shack. ",
+    "answer_prompt_raw": "The best place to get a pianist is ",
+    "answer_raw": "Danny's Shack"
+  },
+  {
+    "needle_raw": "George Smith is Marcus Smith's brother. ",
+    "answer_prompt_raw": "Marcus Smith's brother is ",
+    "answer_raw": "George"
+  },
+  {
+    "needle_raw": "Dianna Hearting lives in Singapore ",
+    "answer_prompt_raw": "Dianna Hearting is based in ",
+    "answer_raw": "Singapore"
+  }
+]
+
