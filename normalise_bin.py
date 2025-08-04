@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+from tqdm import tqdm
 from megatron.data.indexed_dataset_hacked import MMapIndexedDataset, MMapIndexedDatasetBuilder
 
 import logging
@@ -25,6 +26,7 @@ def normalise_bin(max_toukens: int, indexed_dset: MMapIndexedDataset,
     :param path_to_out_bin: path to output .bin file
     :return:
     """
+    logging.info(f"Normalising...")
 
     # log some stats
     normalised = 0
@@ -37,7 +39,7 @@ def normalise_bin(max_toukens: int, indexed_dset: MMapIndexedDataset,
     max_idx = indexed_dset.__len__()
 
 
-    for current_idx in range(max_idx):
+    for current_idx in tqdm(range(max_idx)):
 
         # get a document
         temp_tokens = indexed_dset.get(current_idx)  # numpy array
