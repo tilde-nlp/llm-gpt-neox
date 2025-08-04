@@ -108,7 +108,7 @@ def main(args):
     indexed_dataset = load_indexed_dset(args.input)  # load this once
 
     # construct output
-    output_bin = args.out_dir + "/" + "/".join(args.input.split("/")[:-1]).replace(".bin", "_normalised.bin")
+    output_bin = args.out_dir + "/" + args.input.split("/")[-1].replace(".bin", "_normalised.bin")
 
     normalise_bin(args.max_tokens, indexed_dataset, output_bin)
 
