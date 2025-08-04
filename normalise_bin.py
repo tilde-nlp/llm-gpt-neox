@@ -107,10 +107,10 @@ def main(args):
     )
 
 
-    indexed_dataset = load_indexed_dset(args.input)  # load this once
+    indexed_dataset = load_indexed_dset(args.input + ".bin")  # load this once
 
     # construct output
-    output_bin = args.out_dir + "/" + args.input.split("/")[-1].replace(".bin", "_normalised.bin")
+    output_bin = args.output + ".bin"
 
     normalise_bin(args.max_tokens, indexed_dataset, output_bin)
 
@@ -122,14 +122,14 @@ if __name__ == "__main__":
     import argparse
 
     # Argument parsing happens here, inside main()
-    parser = argparse.ArgumentParser(description="A simple argument parser example.")
+    parser = argparse.ArgumentParser(description="Script takes a .bin/.idx file, and slices up samples that are larger that --max-tokens into smaller bits.")
 
     parser.add_argument("--input", type=str, required=True,
-                        help=f"Path to the input bin file.")
-    parser.add_argument("--out_dir", type=str, required=True,
-                        help=f"Path to output dir.")
-    parser.add_argument("--max_tokens", type=int, required=True,
-                        help=f"Maximum allowed sample length in toukens.")
+                        help=f"Path to the input dataset without .bin/.idx extension.")
+    parser.add_argument("--output", type=str, required=True,
+                        help=f"Path to output normalised dataset to without .bin/.idx extension.")
+    parser.add_argument("--max-tokens", type=int, required=True,
+                        help=f"Code will attempt to slice samples to chunks no larger than this.")
 
     args = parser.parse_args()
 
