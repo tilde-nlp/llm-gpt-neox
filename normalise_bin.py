@@ -110,7 +110,7 @@ def main(args):
     # construct output
     output_bin = args.out_dir + "/" + args.input.replace(".bin", "_normalised.bin")
 
-    normalise_bin(args.max_toukens, indexed_dataset, output_bin)
+    normalise_bin(args.max_tokens, indexed_dataset, output_bin)
 
 
     logging.info("Done.")
