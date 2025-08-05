@@ -82,7 +82,7 @@ class Encoder(object):
                 else:
                     tokenized = Encoder.tokenizer.tokenize(part)
 
-                text_ids.extend(tokenized)
+                text_ids += tokenized
 
             if len(text_ids) > 0:
                 doc_ids.append(text_ids)
