@@ -28,22 +28,22 @@ from megatron import mpu, print_rank_0
 
 class GPT2Dataset(torch.utils.data.Dataset):
     def __init__(
-        self,
-        name,
-        data_prefix,
-        documents,
-        indexed_dataset,
-        num_samples,
-        num_epochs,
-        seq_length,
-        seed,
-        pack_impl="packed",
-        allow_chopped=True,
-        build_index_mappings=True,
-        use_shared_fs=True,
-        label_dataset=None,
-        reward_dataset=None,
-        ref_dataset=None,
+            self,
+            name,
+            data_prefix,
+            documents,
+            indexed_dataset,
+            num_samples,
+            num_epochs,
+            seq_length,
+            seed,
+            pack_impl="packed",
+            allow_chopped=True,
+            build_index_mappings=True,
+            use_shared_fs=True,
+            label_dataset=None,
+            reward_dataset=None,
+            ref_dataset=None,
     ):
 
         self.name = name
@@ -57,7 +57,7 @@ class GPT2Dataset(torch.utils.data.Dataset):
 
         # Checks
         assert self.reward_dataset is None or (
-            pack_impl == "unpacked"
+                pack_impl == "unpacked"
         ), "Reward dataset only supported with unpacked data."
         assert np.min(documents) >= 0
         assert np.max(documents) < indexed_dataset.sizes.shape[0]
@@ -156,7 +156,7 @@ class GPT2Dataset(torch.utils.data.Dataset):
                             sample_lengths.append(len(sample_list[-1]))
                     # And finally add the relevant portion of last document.
                     # TODO: this needs to be hidden under  if offset_l > 0 :
-                    if offset_l > 0:
+                    if self.pack_impl != "k_bin_packed" or offset_l > 0:
                         if n == rw_indx:
                             rw = dataset.get(self.doc_idx[doc_index_l])
                             sample_list.append(
@@ -201,18 +201,18 @@ class GPT2Dataset(torch.utils.data.Dataset):
 
 
 def _build_index_mappings(
-    name,
-    data_prefix,
-    documents,
-    sizes,
-    label_dataset,
-    num_samples,
-    num_epochs,
-    seq_length,
-    seed,
-    packing_impl,
-    use_shared_fs=True,
-    allow_chopped=True,
+        name,
+        data_prefix,
+        documents,
+        sizes,
+        label_dataset,
+        num_samples,
+        num_epochs,
+        seq_length,
+        seed,
+        packing_impl,
+        use_shared_fs=True,
+        allow_chopped=True,
 ):
     """Build doc-idx, sample-idx, and shuffle-idx.
     doc-idx: is an array (ordered) of documents to be used in training.
@@ -248,9 +248,9 @@ def _build_index_mappings(
     # Build the indexed mapping if not exist.
     if should_process_dataset:
         if (
-            (not os.path.isfile(doc_idx_filename))
-            or (not os.path.isfile(sample_idx_filename))
-            or (not os.path.isfile(shuffle_idx_filename))
+                (not os.path.isfile(doc_idx_filename))
+                or (not os.path.isfile(sample_idx_filename))
+                or (not os.path.isfile(shuffle_idx_filename))
         ):
             print_rank_0(
                 " > WARNING: could not find index map files, building "
@@ -318,10 +318,10 @@ def _build_index_mappings(
                     # First, check if we need to skip this item...
                     if label_dataset is not None:
                         if np.all(
-                            label_dataset.get(temp_shuffle_idx[curr_shuffle_idx])[
+                                label_dataset.get(temp_shuffle_idx[curr_shuffle_idx])[
                                 : seq_length + 1
-                            ]
-                            == -100
+                                ]
+                                == -100
                         ):
                             curr_shuffle_idx += 1
                             continue
@@ -342,7 +342,7 @@ def _build_index_mappings(
                     if curr_shuffle_idx == len(documents):
                         curr_shuffle_idx = 0
                         np_rng.shuffle(temp_shuffle_idx)
-                sample_lengths.append(running_length)              # <-- NEW
+                sample_lengths.append(running_length)  # <-- NEW
                 sample_idx.append(np.array([len(doc_idx), 0]))
 
                 # ----------------------  metrics  --------------------------
@@ -473,7 +473,7 @@ def _build_index_mappings(
 
                 # convert to numpy
                 sample_idx = np.asarray(sample_idx, dtype=np.int64)
-                #doc_idx = np.asarray(doc_idx, dtype=np.int32) # this isn't converted in code above
+                # doc_idx = np.asarray(doc_idx, dtype=np.int32) # this isn't converted in code above
 
                 shuffle_idx = np.arange(len(sample_idx) - 1, dtype=np.int64)
                 np_rng.shuffle(shuffle_idx)
@@ -506,8 +506,6 @@ def _build_index_mappings(
                 np.save(doc_idx_filename, doc_idx, allow_pickle=True)
                 np.save(sample_idx_filename, sample_idx, allow_pickle=True)
                 np.save(shuffle_idx_filename, shuffle_idx, allow_pickle=True)
-
-
 
     # This should be a barrier but nccl barrier assumes
     # device_index=rank which is not the case for model
@@ -558,7 +556,7 @@ def _num_epochs(tokens_per_epoch, seq_length, num_samples):
 def _build_doc_idx(documents, num_epochs, np_rng):
     """Build an array with length = number-of-epochs * number-of-documents.
     Each index is mapped to a corresponding document."""
-    doc_idx = np.mgrid[0:num_epochs, 0 : len(documents)][1]
+    doc_idx = np.mgrid[0:num_epochs, 0: len(documents)][1]
     doc_idx[:] = documents
     doc_idx = doc_idx.reshape(-1)
     doc_idx = doc_idx.astype(np.int32)
