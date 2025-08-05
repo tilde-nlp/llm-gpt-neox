@@ -340,6 +340,7 @@ class ParallelSelfAttention(nn.Module):
         self.curse_attention = os.environ.get("CURSE_ATTENTION") == "1"
         if torch.distributed.get_rank() == 0:
             print("Ad hoc attention fix " + str(self.curse_attention), end = " ")
+            print("SFT training" + str(os.environ.get("SFT_ENABLED", "0") == "1"), end = " ")
 
         self.fp16 = neox_args.precision == "fp16"
         self.bf16 = neox_args.precision == "bfloat16"
