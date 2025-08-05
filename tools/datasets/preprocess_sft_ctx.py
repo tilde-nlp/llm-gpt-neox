@@ -79,10 +79,10 @@ class Encoder(object):
 
                 if part in self.special_tokens:
                     tokenized = self.vocab[part]
+                    text_ids += [tokenized]
                 else:
                     tokenized = Encoder.tokenizer.tokenize(part)
-
-                text_ids += tokenized
+                    text_ids += tokenized
 
             if len(text_ids) > 0:
                 doc_ids.append(text_ids)
