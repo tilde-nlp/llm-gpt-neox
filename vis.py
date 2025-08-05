@@ -47,10 +47,10 @@ def main(input_bin, sp_model):
 # --- main ----------------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} /path/to/file.bin /path/to/tokenizer_dir")
+        print(f"Usage: {sys.argv[0]} /path/to/file.bin /path/to/model.model")
         sys.exit(1)
 
     inp_bin = sys.argv[1]
-    tokenizer_dir = sys.argv[2]
+    sp_model_path = sys.argv[2]
 
-    main(inp_bin, tokenizer_dir)
+    main(inp_bin, sp_model_path)
