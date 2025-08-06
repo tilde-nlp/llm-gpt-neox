@@ -3,6 +3,7 @@ import os
 from tqdm import tqdm
 import numpy as np
 from megatron.data.indexed_dataset_hacked import MMapIndexedDataset, MMapIndexedDatasetBuilder
+import argparse
 
 
 # load idx/bin into megatron IndexedDataset class
@@ -18,12 +19,15 @@ def make_indexed_dset_builder(path_to_bin, dtype=69):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} /path/to/input_file.bin")
+    if len(sys.argv) < 4:
+        print(f"Usage: {sys.argv[0]} /path/to/input_file.bin touken_id append/replace")
+        print("(In TLM the eod token is 48)")
         sys.exit(1)
 
     # Get input path from command line argument
     path_to_inp_bin = sys.argv[1]
+    eod_id = int(sys.argv[2])
+    mode = sys.argv[3]
 
     # Construct output file path: prepend "eod_" to the input file's base name
     dir_name = os.path.dirname(path_to_inp_bin)
@@ -51,9 +55,15 @@ if __name__ == '__main__':
         # Ensure tokens are in numpy array format with proper dtype
         temp_tokens = np.array(temp_tokens, dtype=dtype)
         # Define EOD token as an array (the example uses token 48)
-        tokens_eod = np.array([48], dtype=dtype)
+        tokens_eod = np.array([eod_id], dtype=dtype)
         # Concatenate document tokens with EOD token
-        tokens_output = np.concatenate((temp_tokens, tokens_eod))
+        if mode == "append":
+          tokens_output = np.concatenate((temp_tokens, tokens_eod))
+        elif mode == "replace":
+          temp_tokens[-1] = tokens_eod
+          tokens_output = temp_tokens
+        else:
+          raise ValueError("You are a naughty boy/girl/apache choose from 'append' or 'replace' please.")
 
         # Add item (document) to builder and mark the document ending
         indexed_dset_builder.add_item(tokens_output)  # this writes to disk immediately
