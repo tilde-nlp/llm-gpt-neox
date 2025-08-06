@@ -17,6 +17,62 @@ def make_indexed_dset_builder(path_to_bin, dtype=69):
     # needs path to bin file
     return MMapIndexedDatasetBuilder(path_to_bin, dtype=dtype)
 
+def normalise_bin_discard(max_toukens: int, indexed_dset: MMapIndexedDataset,
+              path_to_out_bin: str):
+
+    logging.info(f"Discarding too long samples...")
+
+    # log some stats
+    discarded = 0
+    kept_tokens = 0
+    total_tokens = 0
+
+    # init output bin dataset builder
+    is_builder_set = False
+
+    # get total number of documents available in the dataset
+    max_idx = indexed_dset.__len__()
+
+
+    for current_idx in tqdm(range(max_idx)):
+
+        # get a document
+        temp_tokens = indexed_dset.get(current_idx)  # numpy array
+
+        # calc length
+        temp_len = temp_tokens.size
+
+        total_tokens += temp_len
+
+        if not is_builder_set:
+            # infer data type
+            dtype = temp_tokens.dtype
+
+            # init builder with correct datatype
+            indexed_dset_builder = make_indexed_dset_builder(path_to_out_bin, dtype=dtype)
+
+            is_builder_set = True
+
+        if temp_len > max_toukens:
+            discarded += 1
+            continue
+
+        # add to the left-overs to slice
+        assert temp_len <= max_toukens
+        kept_tokens += temp_len
+        indexed_dset_builder.add_item(temp_tokens)  # this already writes to disk
+        indexed_dset_builder.end_document()  # each sequence is a separate document
+
+    # finalize the slice, create idx file for the bin
+    indexed_dset_builder.finalize(path_to_out_bin.replace(".bin", ".idx"))
+
+    # some more logging
+    logging.info(f"Total original tokens: {total_tokens} tokens")
+    logging.info(f"Discarded {discarded}/{max_idx} samples. [{round(100*discarded/max_idx,2)}%] ")
+    logging.info(f"Kept tokens: {kept_tokens} tokens")
+    logging.info("Normalised dataset written to %s(.bin/.idx)" % path_to_out_bin.replace(".bin", ""))
+
+
 def normalise_bin(max_toukens: int, indexed_dset: MMapIndexedDataset,
               path_to_out_bin: str):
     """
@@ -112,8 +168,10 @@ def main(args):
     # construct output
     output_bin = args.output + ".bin"
 
-    normalise_bin(args.max_tokens, indexed_dataset, output_bin)
-
+    if args.discard:
+        normalise_bin_discard(args.max_tokens, indexed_dataset, output_bin)
+    else:
+        normalise_bin(args.max_tokens, indexed_dataset, output_bin)
 
     logging.info("Done.")
 
@@ -130,6 +188,11 @@ if __name__ == "__main__":
                         help=f"Path to output normalised dataset to without .bin/.idx extension.")
     parser.add_argument("--max-tokens", type=int, required=True,
                         help=f"Code will attempt to slice samples to chunks no larger than this.")
+    parser.add_argument(
+        "--discard",
+        action="store_true",
+        help="Discard samples that are too long instead of splitting them into smaller chunks."
+    )
 
     args = parser.parse_args()
 
