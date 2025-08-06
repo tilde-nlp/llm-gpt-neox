@@ -69,7 +69,7 @@ def normalise_bin_discard(max_toukens: int, indexed_dset: MMapIndexedDataset,
     # some more logging
     logging.info(f"Total original tokens: {total_tokens} tokens")
     logging.info(f"Discarded {discarded}/{max_idx} samples. [{round(100*discarded/max_idx,2)}%] ")
-    logging.info(f"Kept tokens: {kept_tokens} tokens")
+    logging.info(f"Kept tokens: {kept_tokens} tokens. [{round(100*kept_tokens/total_tokens,2)}%] ")
     logging.info("Normalised dataset written to %s(.bin/.idx)" % path_to_out_bin.replace(".bin", ""))
 
 
