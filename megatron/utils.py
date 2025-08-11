@@ -167,7 +167,7 @@ def get_ltor_masks_and_position_ids(
             if b_id == e_id:
                 cs = (data == b_id).cumsum(dim=1)
                 pair_mask = (cs & 1).bool()  # Masked where pair is not closed yet. (excluding closer token)
-                pair_mask[:, 1:]|= pair_mask[:, :-1]  # Mask on pair closing too.
+                pair_mask[:, 1:] = pair_mask[:, 1:] | pair_mask[:, :-1]  # Mask on pair closing too.
                 block_loss|= pair_mask[:, 1:]
                 # Checking whether we have a dangling unclosed pair.
                 if (cs[:, -1] & 1).bool().any():
@@ -180,7 +180,7 @@ def get_ltor_masks_and_position_ids(
                 if pair_mask[:, -1].any():
                     print_rank_0(f"WARNING: Found unclosed pair {(b_id, e_id)} in one or more samples")
                     unclosed_pair = True
-                pair_mask[:, 1:]|= pair_mask[:, :-1]  # Mask on pair closing too.
+                pair_mask[:, 1:] = pair_mask[:, 1:] | pair_mask[:, :-1]  # Mask on pair closing too.
                 block_loss|= pair_mask[:, 1:]
 
     # Perform individual token masking.
