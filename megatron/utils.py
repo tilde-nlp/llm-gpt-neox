@@ -86,16 +86,49 @@ def get_attn_mask(seq_length, device, sliding_window_width, batch_size=1):
     return mask < 0.5
 
 
+# noinspection PyUnreachableCode
 def get_ltor_masks_and_position_ids(
     data,
     eod_token,
     eod_mask_loss=False,
     sliding_window_width=None,
+    loss_mask_pairs=None,
+    loss_mask_individual=None,
+    loss_mask_alternating_individual=None,
 ):
-    """Build masks and position id for left to right model."""
+    """Build masks and position id for left to right model.
+
+    data - tensor of shape [batch, seq_len + 1] (I think). Tensor of full sequences.
+    loss_mask_pairs: list[tuple[int, int]] - Loss will be masked where the pairs are visible in the output tokens,
+      as well as the pair internal tokens will also be masked. Example:
+      loss_mask_pairs = [[2, 3]]; data[:, 1:] = [[5,2,4,1,3,1,2,3]] -> loss_mask = [[0,1,1,1,1,0,1,1]]
+      That is to say if you have something like "<user> How is babby born? </user> According to science babies are..."
+      where you wouldn't want the model to learn to generate user questions, then you'd add the token ids of
+      (<user>, </user>) as a pair in this list.
+      Note: If you do weird nesting or overlapping, consider that undefined behaviour.
+
+    loss_mask_individual: list[int] - Loss will be masked where these tokens appear as output tokens.
+      That is to say - tokens that you don't wish the model to learn to generate.
+      loss_mask_individual=[2, 3, 5]; data[:, 1:] = [[5,2,4,1,3,1,2,3]] -> loss_mask = [[1,1,0,0,1,0,1,1]]
+
+    eod_mask_loss: Bool - Whether to mask loss on output token right after eod. (Added cause Martin wanted this)
+      Allegedly done just so the reported loss is not skewed by the high perplexity of the first token.
+
+    Note: During loss mask creation, assumes input sequences to transformer are data[:,:-1] and
+          output sequences are data[:, 1:].
+          That is to say, you don't have weird shenaniganry of differing input and labels.
+    """
+
+    if loss_mask_pairs is None:
+        loss_mask_pairs = []
+    if loss_mask_individual is None:
+        loss_mask_individual = []
+    if loss_mask_alternating_individual is None:
+        loss_mask_alternating_individual = []
 
     # Extract batch size and sequence length.
     batch_size, seq_length = data.size()
+    seq_length = seq_length - 1
 
     # Attention mask (lower triangular).
     attention_mask = get_attn_mask(
@@ -105,12 +138,12 @@ def get_ltor_masks_and_position_ids(
         batch_size=batch_size
     )
 
-
+    in_seq = data[:, :-1]  # Change full sequence to input sequence like before.
+    out_seq = data[:, 1:]
     if os.environ.get("CURSE_ATTENTION", "0") == "1":
-
         # Step 2: Use EOD token to zero out cross-document attention
         for b in range(batch_size):
-            eod_positions = (data[b] == eod_token).nonzero(as_tuple=False).flatten()
+            eod_positions = (in_seq[b] == eod_token).nonzero(as_tuple=False).flatten()
             prev_idx = 0
             for i in eod_positions:
                 attention_mask[b, 0, (i + 1):, prev_idx:(i + 1)] = 0.0  # Remove cross-document attention
@@ -119,66 +152,73 @@ def get_ltor_masks_and_position_ids(
         # convert to bool and flip
         attention_mask = attention_mask < 0.5
 
-    # ---------------------------------------------------------------
-    # Loss-mask:  1 ⇒ keep token in loss, 0 ⇒ ignore
-    # ---------------------------------------------------------------
-    if os.environ.get("SFT_ENABLED", "0") == "1":
-        loss_mask = torch.ones_like(data, dtype=torch.float)
+    block_loss = torch.zeros_like(out_seq, dtype=torch.bool) # Boolean loss mask.
 
-        # mask instruction blocks (add as many pairs as you need)
-        instr_pairs = [(7, 7)]
+    unclosed_pair = False
 
-        tok = data  # (B, L)
-        instr_mask = torch.zeros_like(tok, dtype=torch.bool)
-
-        for b_id, e_id in instr_pairs:
+    # Perform pair loss masking.
+    # Guess I'll just reuse and change up Martin's code for this.
+    if len(loss_mask_pairs) > 0:
+        if len(loss_mask_pairs) % 2 == 1:
+            raise ValueError("--loss-mask-pairs should have an even length, not size.")
+        for pair_start in range(0, len(loss_mask_pairs), 2):
+            b_id = loss_mask_pairs[pair_start]
+            e_id = loss_mask_pairs[pair_start + 1]
             if b_id == e_id:
-                hits = (tok == b_id).cumsum(dim=1)  # 1,2,3…
-                inside = (hits & 1).bool()  # odd → between pair
-                unmatched = (hits[:, -1] & 1).bool()  # open at EOS?
+                cs = (data == b_id).cumsum(dim=1)
+                pair_mask = (cs & 1).bool()  # Masked where pair is not closed yet. (excluding closer token)
+                pair_mask[:, 1:]|= pair_mask[:, :-1]  # Mask on pair closing too.
+                block_loss|= pair_mask[:, 1:]
+                # Checking whether we have a dangling unclosed pair.
+                if (cs[:, -1] & 1).bool().any():
+                    print_rank_0(f"WARNING: Found unclosed pair {(b_id, e_id)} in one or more samples")
+                    unclosed_pair = True
             else:
-                opens = (tok == b_id).cumsum(dim=1)
-                closes = (tok == e_id).cumsum(dim=1)
-                inside = opens > closes  # started but not closed
-                unmatched = (opens[:, -1] > closes[:, -1])
+                cs_open = (data == b_id).cumsum(dim=1)
+                cs_close = (data == e_id).cumsum(dim=1)
+                pair_mask = (cs_open - cs_close) > 0  # Masked where opens are not closed yet. (excluding closer token)
+                if pair_mask[:, -1].any():
+                    print_rank_0(f"WARNING: Found unclosed pair {(b_id, e_id)} in one or more samples")
+                    unclosed_pair = True
+                pair_mask[:, 1:]|= pair_mask[:, :-1]  # Mask on pair closing too.
+                block_loss|= pair_mask[:, 1:]
 
-            # union of: inside-region + both delimiters
-            instr_mask |= inside | (tok == b_id) | (tok == e_id)
+    # Perform individual token masking.
+    if len(loss_mask_individual) > 0:
+        for id in loss_mask_individual:
+            block_loss|= out_seq == id
 
-            # optional debug – costs ~0
-            if unmatched.any():
-                print_rank_0(
-                    f"WARNING: {unmatched.sum().item()} sequence(s) end with an "
-                    f"unclosed instruction (begin={b_id}, end={e_id})"
-                )
+    # Perform post eod masking.
+    # Explainer - Neox code used to mask the loss on the output tokens predicted from EOD as input tokens.
+    # And Martin wants this.
+    if eod_mask_loss:
+        block_loss|= in_seq == eod_token
 
-        # # 3) NEW: mask **only** the opening tokens of ID 8
-        # open_id = 8
-        # hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
-        # open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
-        # instr_mask |= open8
+    # Perform masking of the odd-numbered token recurrances.
+    # Martin wants this, ask him or read the neox_args docstring for the variable.
+    if len(loss_mask_alternating_individual) > 0:
+        for id in loss_mask_alternating_individual:
+            eq = data == id
+            cs = eq.cumsum(dim=1)
+            odd_pos = eq & (cs % 2 == 1)  # Odd positions of occurance in sequence.
+            block_loss|= odd_pos[:, 1:]
+            if (cs[:, -1] % 2 == 1).any():
+                print_rank_0(f"WARNING: Found unclosed alternating individual token {id} in one or more samples.")
+                unclosed_pair = True
 
+    loss_mask = (~block_loss).to(torch.float)  # Code that uses this expect floats.
 
-        loss_mask[instr_mask] = 0.0  # hide all instruction tokens
-
-        # end-of-document masking
-        if eod_mask_loss:
-            loss_mask[data == eod_token] = 0.0
-
-        # # FIXME: remove?
-        # loss_mask[data == 8] = 0.0
-
-        # padding mask
-        loss_mask[data == 0] = 0.0
-    else:
-        loss_mask = torch.ones(data.size(), dtype=torch.float, device=data.device)
-        # end-of-document masking
-        if eod_mask_loss:
-            loss_mask[data == eod_token] = 0.0
+    # Samples or packing is malformed.
+    if unclosed_pair:
+        print_rank_0(
+            f"WARNING: sequence(s) contained invalid loss_mask_* tokens. " +
+            "Either your samples are too long, you're using the wrong packing method, or your loss_mask_* arguments " +
+            "are incorrectly configured."
+        )
 
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)
-    position_ids = position_ids.unsqueeze(0).expand_as(data)
+    position_ids = position_ids.unsqueeze(0).expand_as(out_seq)
 
     return attention_mask, loss_mask, position_ids
 

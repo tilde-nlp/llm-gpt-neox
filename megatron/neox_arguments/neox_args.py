@@ -852,6 +852,42 @@ class NeoXArgsOther(NeoXArgsTemplate):
     eod_mask_loss: bool = False
     """
     Mask loss for the end of document tokens.
+    If set to true,
+    every time an EOD token is passed as an input token, the output token's loss will be masked.
+    """
+
+    loss_mask_pairs: list = None
+    """
+    A list of length 2n of pairs of token indexes.
+    For each pair, if a sample will contain the two tokens in order, then the model's loss will be masked where
+    the tokens are being generated, and all tokens between these two tokens.
+    Mask multiple segments if the pair repeats.
+    Can produce undesired behaviour if samples are sliced, the same pair is nested, overlapped, improperly opened or
+    improperly closed.
+    if both tokens are the same masked-ness simply alternates between the tokens.
+    Note: This feature mots likely breaks when input tokens and labels are different sequences.
+    """
+
+    loss_mask_individual: list = None
+    """
+    A list of tokens that will not be trained on.
+    That is to say, if label contains one of these tokens, that token's loss will be masked.
+    Note: This feature most likely breaks when input tokens and labels are different sequences.
+    """
+
+    loss_mask_alternating_individual: list = None
+    """
+    A list of tokens that...
+    Well honestly it's easier to give an example.
+    Let's say this is the full sequence - [1, 2, 3, 1, 4, 5, 6, 1, 1, 1, 1].
+    The output sequence comes out to: [2, 3, 1, 4, 5, 6, 1, 1, 1, 1].
+    The masked tokens will be:        [F, F, F, F, F, F, T, F, T, F].
+    That is say, for each token, it will be true that every odd occurance (1-based) in the full sample will be 
+    loss masked.
+    This is done independently for each token in the list.
+    Note: Will potentially produce undesirable behaviour if your unpacked samples contain odd numbers of one of these
+    tokens. It expects and even number of tokens.
+    Note: This feature most likely breaks when input tokens and labels are different sequences.
     """
 
     adlr_autoresume: bool = False
