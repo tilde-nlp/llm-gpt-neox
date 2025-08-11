@@ -365,8 +365,6 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
             labels = labels * label_mask
     tokens = tokens_[:, :-1].contiguous()
 
-    #INGUS TODO: Need to add passing of maskable tokens.
-    pass
     # Get the masks and position ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
         data=tokens_, # Changed to whole sequence from input sequence
