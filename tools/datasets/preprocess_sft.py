@@ -21,6 +21,7 @@ import argparse
 import multiprocessing
 import os
 import sys
+import re
 
 import lm_dataformat as lmd
 import numpy as np
@@ -44,6 +45,18 @@ class Encoder(object):
     def __init__(self, args):
         self.args = args
 
+        self.special_tokens = ["<<<|user|>>>", "<<<|assistant|>>>"]
+
+        self.special_ids = [7, 8]
+
+        assert len(self.special_tokens) == len(self.special_ids)
+
+        self.vocab = {token: idd for token, idd in zip(self.special_tokens, self.special_ids)}
+
+        # compile regex
+        escaped_tokens = [re.escape(tok) for tok in self.special_tokens]
+        self.pattern = f"({'|'.join(escaped_tokens)})"
+
     def initializer(self):
         # Use Encoder class as a container for global data
         Encoder.tokenizer = build_tokenizer(self.args)
@@ -54,22 +67,22 @@ class Encoder(object):
         ids = {}
         for key in self.args.jsonl_keys:
             doc_ids = []
-            print(f"text: {text}")
-            meme = text.split("<|mostuniqueseperatortokenintheworld|>")
-            q = meme[0]
-            a = meme[1]
 
-            user_id = Encoder.tokenizer.tokenizer.piece_to_id("<|user|>")
-            assistant_id = Encoder.tokenizer.tokenizer.piece_to_id("<|assistant|>")
+            parts = re.split(self.pattern, text)
+            parts = [p for p in parts if p.strip()]
+            if len(parts) <= 1:
+                raise ValueError(f"Line: {text}\n Did not match any special tokens from the list: {self.special_tokens}")
 
-            # tokenize question and answer
-            q_ids = Encoder.tokenizer.tokenize(q)
-            a_ids = Encoder.tokenizer.tokenize(a)
+            # tokenize everything that is not a special token
+            text_ids = []
+            for part in parts:
 
-            # stitch: <|user|> Q <|user|><|assistant|> A <|assistant|>
-            text_ids = [user_id] + q_ids + [user_id, assistant_id] + a_ids + [assistant_id]
-
-            #text_ids = Encoder.tokenizer.tokenize(text)
+                if part in self.special_tokens:
+                    tokenized = self.vocab[part]
+                    text_ids += [tokenized]
+                else:
+                    tokenized = Encoder.tokenizer.tokenize(part)
+                    text_ids += tokenized
 
             if len(text_ids) > 0:
                 doc_ids.append(text_ids)
@@ -87,7 +100,7 @@ def get_args(input_args=None):
         type=str,
         required=True,
         help="Path to input jsonl files or lmd archive(s) - if using multiple archives, put them in a comma separated "
-        "list",
+             "list",
     )
     group.add_argument(
         "--jsonl-keys",
