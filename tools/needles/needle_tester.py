@@ -2,6 +2,7 @@ import sys
 import argparse
 import subprocess
 import os
+import json
 
 
 # Fetch path of needle folder
@@ -104,6 +105,13 @@ def parse_args():
         help="Path to llm-gpt-neox folder For checkpoint converting purpouses. Default: %(default)s"
     )
 
+    parser.add_argument(
+        "--nodes",
+        type=int,
+        default=1,
+        help="Will parallelize along this many nodes. Currently parallelizes only along --depth-test-count. So you want them to be divisable to not waste resources. Note there's a maximum of 8 nodes for dev-g"
+    )
+
     args = parser.parse_args()
 
     must_exist = {
@@ -158,11 +166,47 @@ def main():
                       "--cpus-per-task=56",
                       "--mem=0",
                       "--time=3:00:00",
-                      "--nodes=1"] + singularity_command
+                      "--nodes=" + str(args.nodes)] + singularity_command
 
     print(srun_command)
     subprocess.run(srun_command)
 
+    # Merge together parallelization results.
+    if args.nodes > 1:
+        # Merge debug files.
+        result_obj = None
+        for node_id in range(args.nodes):
+            log_folder = os.path.join(args.log_folder, str(node_id))
+            with open(os.path.join(log_folder, "debug.json"), "r") as f_node:
+                node_obj = json.load(f_node)
+            if result_obj is None:
+                result_obj = node_obj
+            else:
+                for idx, ctx in enumerate(result_obj):
+                    ctx+= node_obj[idx]
+        with open(os.path.join(args.log_folder, "debug.json"), "w") as f_whole:
+            json.dump(result_obj, f_whole)
+
+        # Merge results files.
+        result_obj = None
+        node_objs = []
+        for node_id in range(args.nodes):
+            with open(os.path.join(args.log_folder, str(node_id), "results.json"), "r") as f_node:
+                node_objs.append(json.load(f_node))
+        ## Merge depth tests.
+        for node_obj in node_objs:
+            if result_obj is None:
+                result_obj = node_obj
+            else:
+                result_obj["target_depths"]+= node_obj["target_depths"]
+
+        ## Merge scores.
+        for node_obj in node_objs[1:]:
+            for idx, ctx in enumerate(result_obj["scores"]):
+                ctx+= node_obj["scores"][idx]
+
+        with open(os.path.join(args.log_folder, "results.json"), "w") as f_whole:
+            json.dump(result_obj, f_whole)
 
 if __name__ == "__main__":
     main()
