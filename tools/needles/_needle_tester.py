@@ -172,9 +172,9 @@ def convert_checkpoint(step_path: str, output_path: str, config: dict, GPT_NEOX_
     command += ["--output_dir", output_path]
 
     os.makedirs("./tmp/", exist_ok=True)
-    with open("./tmp/conf" + str(os.getenv(SLURM_NODEID)) + ".yml", "w") as file:
+    with open("./tmp/conf" + str(os.getenv("SLURM_NODEID")) + ".yml", "w") as file:
         yaml.dump(config, file)
-    command += ["--config_file", "./tmp/conf" + str(os.getenv(SLURM_NODEID) + ".yml"]
+    command += ["--config_file", "./tmp/conf" + str(os.getenv("SLURM_NODEID")) + ".yml"]
 
     if model_type.upper() == "NEOX":
         command += ["--architecture", "neox"]
