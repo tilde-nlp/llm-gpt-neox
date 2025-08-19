@@ -81,7 +81,7 @@ def plot_abs(heatmap, target_contexts, target_depths, title, save_path):
   ax = fig.add_subplot(111)
 
   # Draw the image
-  im = ax.imshow(heatmap)
+  im = ax.imshow(heatmap, vmin=0, vmax=1)
 
   # Colorbar – must be created from the figure, not pyplot
   cbar = fig.colorbar(im, ax=ax)
