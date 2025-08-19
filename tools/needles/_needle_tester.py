@@ -131,6 +131,20 @@ def parse_args():
         help="Will parallelize along this many nodes. Currently parallelizes only along --depth-test-count. So you want them to be divisable to not waste resources. Note there's a maximum of "
     )
 
+    parser.add_argument(
+        "--partition",
+        type=str,
+        default="small-g",
+        help="Partition to use for slurm job allocation. Default: %(default)s"
+    )
+
+    parser.add_argument(
+        "--hours",
+        type=int,
+        default=5,
+        help="Number of hours to allocate for job (integer). Default: %(default)s"
+    )
+
     args = parser.parse_args()
 
     args.node_id = int(os.getenv("SLURM_NODEID"))
