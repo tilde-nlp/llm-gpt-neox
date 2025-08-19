@@ -112,7 +112,29 @@ def parse_args():
         help="Will parallelize along this many nodes. Currently parallelizes only along --depth-test-count. So you want them to be divisable to not waste resources. Note there's a maximum of 8 nodes for dev-g"
     )
 
+    parser.add_argument(
+        "--partition",
+        type=str,
+        default="small-g",
+        help="Partition to use for slurm job allocation. Default: %(default)s"
+    )
+
+    parser.add_argument(
+        "--hours",
+        type=int,
+        default=5,
+        help="Number of hours to allocate for job (integer). Default: %(default)s"
+    )
+
     args = parser.parse_args()
+
+    # Validation regarding slurm params.
+    if args.hours > 72:
+        raise ValueError("--hours must be less than 72. Google LUMI partitions.")
+
+    if args.partition not in ["dev-g", "small-g", "standard-g"]:
+        raise ValueError("--partition must choose from the options dev-g, small-g, standard-g. Google LUMI partitions.")
+
 
     must_exist = {
         "config": args.config,
@@ -160,12 +182,12 @@ def main():
     srun_command = ["srun",
                       "--job-name=needle_test",
                       "--account=project_465001281",
-                      "--partition=dev-g",
+                      "--partition=" + args.partition,
                       "--gpus-per-node=8",
                       "--ntasks-per-node=1",
                       "--cpus-per-task=56",
                       "--mem=0",
-                      "--time=3:00:00",
+                      "--time=" + str(args.hours).zfill(2) + ":00:00",
                       "--nodes=" + str(args.nodes)] + singularity_command
 
     print(srun_command)
