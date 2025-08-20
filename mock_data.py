@@ -64,7 +64,7 @@ if __name__ == '__main__':
     mock_docs = generate_mock_documents(num_docs, max_doc_len)
 
     # instruction tokens
-    tokens_instruct = [111111, 1337, 420, 1337, 1337, 111111]
+    tokens_instruct = [111111, 222, 333, 444, 333, 222, 111111]
 
     # iterate through the documents
     for temp_tokens in tqdm(mock_docs):
