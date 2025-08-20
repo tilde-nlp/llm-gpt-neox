@@ -119,10 +119,62 @@ def get_ltor_masks_and_position_ids(
         # convert to bool and flip
         attention_mask = attention_mask < 0.5
 
-    # Loss mask.
-    loss_mask = torch.ones(data.size(), dtype=torch.float, device=data.device)
-    if eod_mask_loss:
-        loss_mask[data == eod_token] = 0.0
+    # ---------------------------------------------------------------
+    # Loss-mask:  1 ⇒ keep token in loss, 0 ⇒ ignore
+    # ---------------------------------------------------------------
+    if os.environ.get("SFT_ENABLED", "0") == "1":
+        loss_mask = torch.ones_like(data, dtype=torch.float)
+
+        # mask instruction blocks (add as many pairs as you need)
+        instr_pairs = [(7, 7)]
+
+        tok = data  # (B, L)
+        instr_mask = torch.zeros_like(tok, dtype=torch.bool)
+
+        for b_id, e_id in instr_pairs:
+            if b_id == e_id:
+                hits = (tok == b_id).cumsum(dim=1)  # 1,2,3…
+                inside = (hits & 1).bool()  # odd → between pair
+                unmatched = (hits[:, -1] & 1).bool()  # open at EOS?
+            else:
+                opens = (tok == b_id).cumsum(dim=1)
+                closes = (tok == e_id).cumsum(dim=1)
+                inside = opens > closes  # started but not closed
+                unmatched = (opens[:, -1] > closes[:, -1])
+
+            # union of: inside-region + both delimiters
+            instr_mask |= inside | (tok == b_id) | (tok == e_id)
+
+            # optional debug – costs ~0
+            if unmatched.any():
+                print_rank_0(
+                    f"WARNING: {unmatched.sum().item()} sequence(s) end with an "
+                    f"unclosed instruction (begin={b_id}, end={e_id})"
+                )
+
+        # # 3) NEW: mask **only** the opening tokens of ID 8
+        # open_id = 8
+        # hits8 = (tok == open_id).cumsum(dim=1)  # how many 8s seen so far
+        # open8 = (hits8 & 1).bool() & (tok == open_id)  # odd-count 8’s are “opening”
+        # instr_mask |= open8
+
+
+        loss_mask[instr_mask] = 0.0  # hide all instruction tokens
+
+        # end-of-document masking
+        if eod_mask_loss:
+            loss_mask[data == eod_token] = 0.0
+
+        # # FIXME: remove?
+        # loss_mask[data == 8] = 0.0
+
+        # padding mask
+        loss_mask[data == 0] = 0.0
+    else:
+        loss_mask = torch.ones(data.size(), dtype=torch.float, device=data.device)
+        # end-of-document masking
+        if eod_mask_loss:
+            loss_mask[data == eod_token] = 0.0
 
     # Position ids.
     position_ids = torch.arange(seq_length, dtype=torch.long, device=data.device)

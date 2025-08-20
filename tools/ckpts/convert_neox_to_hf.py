@@ -276,6 +276,17 @@ def create_config(neox_config, architecture="neox", is_rm=False, pad_token_id=-1
         "tie_word_embeddings": (not get_key(neox_config, "no-weight-tying", False)),
         "use_cache": True,
     }
+
+    if get_key(neox_config, "yarn", False):
+        tmp = {}
+        tmp["type"] = "yarn"
+        tmp["factor"] = get_key(neox_config, "yarn_factor")
+        tmp["original_max_position_embeddings"] = get_key(neox_config, "yarn_original_max_position_embeddings")
+        tmp["attention_factor"] = get_key(neox_config, "yarn_attention_factor", 1.0)
+        tmp["beta_fast"] = get_key(neox_config, "yarn_beta_fast", 32.0)
+        tmp["beta_slow"] = get_key(neox_config, "yarn_beta_slow", 1.0)
+        args["rope_scaling"] = tmp
+
     if architecture == "mistral" or architecture == "llama":
         args.update(
             {
