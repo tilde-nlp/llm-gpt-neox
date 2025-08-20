@@ -367,10 +367,13 @@ def _get_batch(neox_args, tokenizer, keys, data, datatype, label_mask_zero=False
 
     # Get the masks and position ids.
     attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-        data=tokens,
+        data=tokens_, # Changed to whole sequence from input sequence
         eod_token=neox_args.tokenizer.eod,
         eod_mask_loss=neox_args.eod_mask_loss,
         sliding_window_width=neox_args.sliding_window_width,
+        loss_mask_pairs=neox_args.loss_mask_pairs,
+        loss_mask_individual=neox_args.loss_mask_individual,
+        loss_mask_alternating_individual=neox_args.loss_mask_alternating_individual
     )
 
     # TODO: remove later
@@ -529,12 +532,14 @@ def get_batch_pipe(data, neox_args, curr_scheduler=None):
 
 def get_batch_sequential(forward_input, neox_args):
     """A modification of get_batch() to work with the latest batch instead of an iterator."""
-    attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
-        data=forward_input[0],
-        eod_token=neox_args.tokenizer.eod,
-        eod_mask_loss=neox_args.eod_mask_loss,
-    )
-    return (forward_input[0], forward_input[1], attention_mask)
+    #attention_mask, loss_mask, position_ids = get_ltor_masks_and_position_ids(
+    #    data=forward_input[0],
+    #    eod_token=neox_args.tokenizer.eod,
+    #    eod_mask_loss=neox_args.eod_mask_loss,
+    #)
+    # Like I think it's fine to just reforward the input.
+    # Like for normal training and DPO I think it literally just recomputes attention the same exact way as previously, for no reason.
+    return (forward_input[0], forward_input[1], forward_input[2])
 
 
 def average_losses_across_data_parallel_group(losses):

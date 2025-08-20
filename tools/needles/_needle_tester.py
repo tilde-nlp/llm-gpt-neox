@@ -124,7 +124,30 @@ def parse_args():
         help="Path to llm-gpt-neox folder."
     )
 
+    parser.add_argument(
+        "--nodes",
+        type=int,
+        default=1,
+        help="Will parallelize along this many nodes. Currently parallelizes only along --depth-test-count. So you want them to be divisable to not waste resources. Note there's a maximum of "
+    )
+
+    parser.add_argument(
+        "--partition",
+        type=str,
+        default="small-g",
+        help="Partition to use for slurm job allocation. Default: %(default)s"
+    )
+
+    parser.add_argument(
+        "--hours",
+        type=int,
+        default=5,
+        help="Number of hours to allocate for job (integer). Default: %(default)s"
+    )
+
     args = parser.parse_args()
+
+    args.node_id = int(os.getenv("SLURM_NODEID"))
 
     must_exist = {
         "config": args.config,
@@ -139,8 +162,10 @@ def parse_args():
             print(f"Error: --{name} '{path}' doesn't exist.")
             sys.exit(1)
 
-    if not os.path.exists(args.log_folder):
-        os.makedirs(args.log_folder)
+    if args.nodes > 1:
+        args.log_folder = os.path.join(args.log_folder, str(args.node_id))
+
+    os.makedirs(args.log_folder, exist_ok=True)
 
     return args
 
@@ -161,9 +186,9 @@ def convert_checkpoint(step_path: str, output_path: str, config: dict, GPT_NEOX_
     command += ["--output_dir", output_path]
 
     os.makedirs("./tmp/", exist_ok=True)
-    with open("./tmp/conf.yml", "w") as file:
+    with open("./tmp/conf" + str(os.getenv("SLURM_NODEID")) + ".yml", "w") as file:
         yaml.dump(config, file)
-    command += ["--config_file", "./tmp/conf.yml"]
+    command += ["--config_file", "./tmp/conf" + str(os.getenv("SLURM_NODEID")) + ".yml"]
 
     if model_type.upper() == "NEOX":
         command += ["--architecture", "neox"]
@@ -255,19 +280,24 @@ def main():
     needles = niah.load_needles(args.needle_path, tokenizer)
 
 
+    # Mucking around with paralelization along multiple nodes.
+    first_depth = args.depth_test_count * args.node_id // args.nodes
+    last_depth_excl = args.depth_test_count * (args.node_id + 1) // args.nodes
+
+
     # Prepare tests.
     tests = [] # List(context length)[List(insertion depth)[List(hay sample)[List(needle)[List[int]]]]]
     ctx_step_size = args.max_context_length / args.context_length_test_count
     depth_step_size = 1 / (args.depth_test_count - 1)
     target_contexts = [(i + 1) * ctx_step_size for i in range(args.context_length_test_count)]
-    target_depths = [i * depth_step_size for i in range(args.depth_test_count)]
+    target_depths = [i * depth_step_size for i in range(first_depth, last_depth_excl)]
     for ctx_step in range(args.context_length_test_count):
         # Load hay.
         hay_cap = ctx_step_size * (ctx_step + 1)
         haystacks = niah.load_hay(args.hay_path, tokenizer, hay_cap)
         
         tmp3 = []
-        for depth_step in range(args.depth_test_count):
+        for depth_step in range(first_depth, last_depth_excl):
             depth = depth_step_size * depth_step
             tmp2 = []
             for hay in haystacks:
@@ -278,7 +308,7 @@ def main():
             tmp3.append(tmp2)
         tests.append(tmp3)
     
-    debug = np.zeros([args.context_length_test_count, args.depth_test_count, len(haystacks), len(needles)]).tolist()
+    debug = np.zeros([args.context_length_test_count, (last_depth_excl - first_depth), len(haystacks), len(needles)]).tolist()
     # Make tests tensors on correct device device.
     for idx1, obj1 in enumerate(tests):
         for idx2, obj2 in enumerate(obj1):
@@ -292,7 +322,7 @@ def main():
 
     
     # Evaluate checkpoint.
-    scores = np.zeros([args.context_length_test_count, args.depth_test_count, len(haystacks), len(needles)])
+    scores = np.zeros([args.context_length_test_count, (last_depth_excl - first_depth), len(haystacks), len(needles)])
     for idx1, obj1 in enumerate(tests):
         print("Needle testing progress: ", idx1, "/", args.context_length_test_count)
         for idx2, obj2 in enumerate(obj1):
