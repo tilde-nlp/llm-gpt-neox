@@ -183,7 +183,7 @@ Optionally change the job name and adjust sbatch parameters:
 #SBATCH --tasks-per-node=8
 #SBATCH --cpus-per-task=7
 #SBATCH --mem=0
-#SBATCH --time=20:00:00
+#SBATCH --time=00:30:00
 #SBATCH --hint=nomultithread
 #SBATCH --job-name=ft_latest_XXX
 ```
@@ -225,6 +225,11 @@ Change/check the following keys in the XXX yml config:
 # VERY important
 "pack_impl": "k_bin_packed", # for SFT this MUST be 'k_bin_packed', otherwise training samples will be split/catted
 
+# VERY VERY important
+"loss_mask_pairs": [7, 7], # i.e. <|user|>. Mask everything between these tokens, including the tokens themselves
+"loss_mask_alternating_individual": [8], # i.e. <|assistant|>. Mask only the closing (i.e. every second) token.
+# "eod_mask_loss": False # default is false. Have not tested True. Essentially would loss mask predicting after EOD.
+
 # checkpoint load/save
 "checkpoint_factor": 100, # dealers choice
 "exit_interval": 8550, # probably irrelevant for SFT, set this to be > train_iters
@@ -249,7 +254,36 @@ set finetune=false and then you can schedule as many jobs as you want.
 
 ## 5. Convert checkpoint to HF
 
-TODO
+From repo root (NOTE: different container):
+
+```
+# Clean up environment, mount stuff
+source misc/purge.sh
+
+# Start interactive shell on LUMI
+srun \
+  --job-name=test-ft \
+  --account=project_465001281 \
+  --partition=dev-g \
+  --gpus-per-node=8 \
+  --ntasks-per-node=1 \
+  --cpus-per-task=56 \
+  --mem-per-gpu=0 \
+  --time=01:00:00 \
+  --nodes=1 \
+  singularity shell /scratch/project_465001281/containers/rocm603_inference.sif
+
+# init python
+$WITH_CONDA
+
+python /project/project_465001281/IP/llm-gpt-neox/tools/ckpts/convert_neox_to_hf.py \
+  --input_dir  /scratch/project_465001281/path/to/global_step_XXXXX \
+  --output_dir /scratch/project_465001281/path/to/output_dir \
+  --config_file /path/to/30B_SOTA_finetune_latest_XXX.yml \
+  --architecture llama
+```
+
+
 
 ## 6. Debug inference on LUMI
 
