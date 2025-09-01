@@ -45,11 +45,9 @@ class Encoder(object):
     def __init__(self, args):
         self.args = args
 
-        self.special_tokens = ["<h1_4akJ>", "<h2_cdfS>", "<h3_Ok7J>", "<t1_1Wg3>", "<t2_y7d3>", "<t3_Mj3v>", "<S_Ppb9>",
-                               "<s_zhus>",
-                               "</S_gBZx>", "<ID2_tjOL>", "</ID2_xLiQ>", "<ID1_RhEi>", "</ID1_Qis8>"]
+        self.special_tokens = args.special_tokens
 
-        self.special_ids = [31929, 31931, 31932, 31933, 31934, 31935, 31936, 31937, 31938, 31942, 31943, 31946, 31950]
+        self.special_ids = args.special_ids
 
         assert len(self.special_tokens) == len(self.special_ids)
 
@@ -169,6 +167,24 @@ def get_args(input_args=None):
         default=100,
         help="Interval between progress updates",
     )
+
+    group.add_argument(
+        "--special-tokens",
+        nargs="+",
+        default=["<h1_4akJ>", "<h2_cdfS>", "<h3_Ok7J>", "<t1_1Wg3>", "<t2_y7d3>",
+                 "<t3_Mj3v>", "<S_Ppb9>", "<s_zhus>", "</S_gBZx>", "<ID2_tjOL>",
+                 "</ID2_xLiQ>", "<ID1_RhEi>", "</ID1_Qis8>"],
+        help="List of strings to be parsed to control tokens. Default: %(default)s"
+    )
+
+    group.add_argument(
+        "--special-ids",
+        nargs="+",
+        type=int,
+        default=[31929, 31931, 31932, 31933, 31934, 31935, 31936, 31937, 31938, 31942, 31943, 31946, 31950],
+        help="1 to 1 corresponding list of control token IDs to map --special-tokens to. Default: %(default)s"
+    )
+
     args = parser.parse_args(input_args)
     args.keep_empty = False
 
@@ -176,6 +192,10 @@ def get_args(input_args=None):
     args.rank = 0
     args.make_vocab_size_divisible_by = 128
     args.model_parallel_size = 1
+
+    # Validation
+    if len(args.special_tokens) != len(args.special_ids):
+        raise ValueError(f"Amount of --special-tokens and --special-ids differs, but should be the same: {len(args.special_tokens)} & {len(args.special_ids)}")
 
     return args
 
