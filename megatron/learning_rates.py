@@ -116,8 +116,8 @@ class AnnealingLR(object):
             
             cd_start_iter = self.neox_args.cd_start_iter
             cd_end_iter = self.neox_args.cd_end_iter
-            max_cd_lr = self.start_cd_lr
-            min_cd_lr = self.decay_pp * self.max_cd_lr
+            max_cd_lr = self.neox_args.start_cd_lr
+            min_cd_lr = self.decay_pp * max_cd_lr
 
             print_rank_0("------- > Using 'sqrt' learning rate decay")
             print_rank_0("------- > cd_start_iter: {}".format(cd_start_iter))
