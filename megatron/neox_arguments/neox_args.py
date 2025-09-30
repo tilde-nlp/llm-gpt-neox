@@ -634,6 +634,26 @@ class NeoXArgsLRScheduler(NeoXArgsTemplate):
     """
     Learning rate decay function. Choose from 'constant', 'linear', 'cosine', 'exponential', 'sqrt'.
     """
+    
+    cd_start_iter: int = None
+    """
+    For sqrt cooldown LR schedule, the (global) iteration from which to start cooldown
+    """
+    
+    cd_end_iter: int = None
+    """
+    For sqrt cooldown LR schedule, the (global) iteration at which to end cooldown. Should coincide with last train iteration.
+    """
+    
+    start_cd_lr: float = None
+    """
+    For sqrt cooldown LR schedule, the startin LR from which to cooldown.
+    """
+    
+    decay_pp: float = None
+    """
+    For sqrt cooldown LR schedule the fraction of start cd LR to which to decay to (e.g. 0.05 = decay to 5% of start cd LR).
+    """
 
     lr_decay_iters: int = None
     """
