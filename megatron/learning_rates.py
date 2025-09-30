@@ -109,10 +109,10 @@ class AnnealingLR(object):
             assert self.neox_args
             # TODO: pass this as args
             
-            cd_start_iter = 339086 # End of U3_11_cd
-            cd_end_iter = 423858 # 339086 + 35000 (U3_12_cd) + 35000 (U3_13_cd) + 14772 (U3_14_cd)
-            max_cd_lr = 1.6*10**(-4)
-            min_cd_lr = max_cd_lr*0.05
+            # cd_start_iter = 339086 # End of U3_11_cd
+            # cd_end_iter = 423858 # 339086 + 35000 (U3_12_cd) + 35000 (U3_13_cd) + 14772 (U3_14_cd)
+            # max_cd_lr = 1.6*10**(-4)
+            # min_cd_lr = max_cd_lr*0.05
             
             cd_start_iter = self.neox_args.cd_start_iter
             cd_end_iter = self.neox_args.cd_end_iter
