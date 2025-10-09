@@ -719,7 +719,7 @@ class ParallelSelfAttention(nn.Module):
 
                   #Compute sequence starting points.
                   #The dirtiest way to compute it:
-                  attention_sum = attention_mask[i, 0].view([-1, attention_mask.shape[2]]).sum(dim=1)
+                  attention_sum = attention_mask[i, 0].view([-1, attention_mask.shape[2]]).sum(dim=1, dtype=torch.int32)
                   diff = attention_sum[1:] - attention_sum[:-1]
                   ends = (diff > -0.5).nonzero().squeeze(-1).int() + 1
                   cu_seqlens_q = torch.tensor([0], dtype=torch.int32, device=query_layer.device)
