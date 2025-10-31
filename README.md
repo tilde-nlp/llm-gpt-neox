@@ -3,7 +3,7 @@
 
 # TILDE
 
-This TILDE operated and maintained branch for training 30B Language Model on LUMI HPC
+This branch is maintained by TILDE for the training and fine-tuning of a 30B language model on the LUMI high-performance computing (HPC) system.
 
 # GPT-NeoX
 
