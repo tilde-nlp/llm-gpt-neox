@@ -141,16 +141,25 @@ def get_ltor_masks_and_position_ids(
     in_seq = data[:, :-1]  # Change full sequence to input sequence like before.
     out_seq = data[:, 1:]
     if os.environ.get("CURSE_ATTENTION", "0") == "1":
-        # Step 2: Use EOD token to zero out cross-document attention
-        for b in range(batch_size):
-            eod_positions = (in_seq[b] == eod_token).nonzero(as_tuple=False).flatten()
-            prev_idx = 0
-            for i in eod_positions:
-                attention_mask[b, 0, (i + 1):, prev_idx:(i + 1)] = 0.0  # Remove cross-document attention
-                prev_idx = i
+        if os.environ.get("SAMPLE_ENDS", "0") == "1":
+            attention_mask = torch.zeros((batch_size, seq_length), device=data.device)
+            for b in range(batch_size):
+                eod_positions = (in_seq[b] == eod_token).nonzero(as_tuple=False).flatten()
+                for i in eod_positions:
+                      attention_mask[b, i] = 1.0
+            attention_mask = attention_mask > 0.5 # Just [b, s] True where output token is eod
 
-        # convert to bool and flip
-        attention_mask = attention_mask < 0.5
+        else:
+          # Step 2: Use EOD token to zero out cross-document attention
+          for b in range(batch_size):
+              eod_positions = (in_seq[b] == eod_token).nonzero(as_tuple=False).flatten()
+              prev_idx = 0
+              for i in eod_positions:
+                  attention_mask[b, 0, (i + 1):, prev_idx:(i + 1)] = 0.0  # Remove cross-document attention
+                  prev_idx = i
+
+          # convert to bool and flip
+          attention_mask = attention_mask < 0.5
 
     block_loss = torch.zeros_like(out_seq, dtype=torch.bool) # Boolean loss mask.
 

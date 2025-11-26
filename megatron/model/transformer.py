@@ -719,9 +719,13 @@ class ParallelSelfAttention(nn.Module):
 
                   #Compute sequence starting points.
                   #The dirtiest way to compute it:
-                  attention_sum = attention_mask[i, 0].view([-1, attention_mask.shape[2]]).sum(dim=1, dtype=torch.int32)
-                  diff = attention_sum[1:] - attention_sum[:-1]
-                  ends = (diff > -0.5).nonzero().squeeze(-1).int() + 1
+                  if os.environ.get("SAMPLE_ENDS", "0") == "1":
+                    ends = attention_mask[i, :-1].nonzero().squeeze(-1).int() + 1
+                    # Since attention_mask should be true in positions where EOD is the output token,
+                  else:
+                    attention_sum = attention_mask[i, 0].view([-1, attention_mask.shape[2]]).sum(dim=1, dtype=torch.int32)
+                    diff = attention_sum[1:] - attention_sum[:-1]
+                    ends = (diff > -0.5).nonzero().squeeze(-1).int() + 1
                   cu_seqlens_q = torch.tensor([0], dtype=torch.int32, device=query_layer.device)
                   cu_seqlens_q = torch.cat([cu_seqlens_q, ends, torch.tensor([query_layer_.shape[0]], dtype=torch.int32, device=query_layer.device)])
                   cu_seqlens_k = cu_seqlens_q
